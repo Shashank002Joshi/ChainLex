@@ -2,10 +2,13 @@ import asyncio
 import os
 from uuid import uuid4
 
+import eth_abi
 import pytest
 from pymongo import AsyncMongoClient
 from pymongo.errors import DuplicateKeyError
 
+from chainlex.blockchain.artifacts import TOPIC_SETTLEMENT_INITIATED
+from chainlex.blockchain.indexer import BlockchainIndexer
 from chainlex.connectors.simulator import prepare_action
 from chainlex.db.cli import preflight, seed_demo
 from chainlex.db.indexes import LegacySchemaError, bootstrap
@@ -35,6 +38,42 @@ async def test_real_database_bootstrap_and_simulator_persistence():
         assert await database.entities.count_documents({}) == 6
         assert await database.compliance_cases.count_documents({}) == 4
         assert await database.compliance_cases.count_documents({"is_active": True}) == 0
+
+        # Merged chain indexer must work with the same validators and tenant-scoped indexes.
+        for tenant in ("bank_a", "bank_b"):
+            indexer = BlockchainIndexer(database, tenant_id=tenant)
+            await indexer.ingest_block(
+                {"number": 1, "hash": "0xblock1", "parent_hash": "0x0", "timestamp": 1},
+                transactions=[
+                    {"hash": "0xtx1", "from": "0xAlice", "to": "0xBob", "value_minor": 100}
+                ],
+                logs=[
+                    {
+                        "transactionHash": "0xtx1",
+                        "logIndex": 0,
+                        "address": "0x" + "11" * 20,
+                        "topics": [
+                            TOPIC_SETTLEMENT_INITIATED,
+                            "0x" + "22" * 32,
+                            "0x" + "00" * 12 + "33" * 20,
+                            "0x" + "00" * 12 + "44" * 20,
+                        ],
+                        "data": "0x" + eth_abi.encode(["uint256", "string"], [100, "USD"]).hex(),
+                    }
+                ],
+            )
+        assert await database.chain_blocks.count_documents({}) == 2
+        assert await database.chain_transactions.count_documents({}) == 2
+        assert await database.contract_events.count_documents({}) == 2
+        await BlockchainIndexer(database, tenant_id="bank_a").ingest_block(
+            {"number": 1, "hash": "0xreplacement", "parent_hash": "0x0", "timestamp": 2}
+        )
+        assert (await database.contract_events.find_one({"tenant_id": "bank_a"}))[
+            "is_orphaned"
+        ] is True
+        assert (await database.contract_events.find_one({"tenant_id": "bank_b"}))[
+            "is_orphaned"
+        ] is False
 
         audit = {
             "tenant_id": "bank_a",

@@ -56,7 +56,8 @@ class PreparedAction(Contract):
 
 class DispatchReference(Contract):
     operation_id: str
-    provider: Literal["simulator"] = "simulator"
+    provider: Literal["simulator", "evm"] = "simulator"
+    tx_hash: str | None = None
 
 
 class ProbeOutcome(StrEnum):

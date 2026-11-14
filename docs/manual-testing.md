@@ -259,6 +259,7 @@ For a fresh manual-test namespace, expect these results after steps 1–5:
 | `policies` | Empty: bootstrap does not seed executable policies. |
 | `tenant_controls` | Empty: bootstrap defines the collection/index, not an active control record. |
 | `regulations` | Empty: verified regulatory ingestion is not implemented. |
+| `chain_blocks`, `chain_transactions`, `contract_events` | Empty during this simulator walkthrough; these are populated only when the separate blockchain indexer is used. |
 
 An additional `_preflight` collection may exist with zero documents. Preflight deletes its temporary marker after the transaction check.
 
@@ -411,7 +412,7 @@ This resets only the explicitly selected `chainlex_manual_*` database:
 | `demo-entity-1` through `demo-entity-6` | Restore the original six entity fixture documents, including removal of added fixture fields. |
 | `demo-case-1` through `demo-case-4` | Restore the original four inactive, unverified case fixture documents. |
 | Other entity and case records | Preserve. |
-| `regulations`, `policies`, `tenant_controls`, and other collections | Preserve their contents. |
+| `regulations`, `policies`, `tenant_controls`, blockchain/indexer collections, and other collections | Preserve their contents. |
 | Collections, indexes, and validators | Preserve. |
 
 Deletion and fixture restoration run in one MongoDB transaction. A failure aborts both. Reset refuses a known fixture ID if its existing record is no longer marked `is_demo_fixture: true`; it does not silently replace a non-demo record.

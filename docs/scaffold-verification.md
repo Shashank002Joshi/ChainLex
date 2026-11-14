@@ -1,5 +1,16 @@
 # Scaffold verification
 
+## Main integration branch
+
+On November 14, 2026, `feature/fsm-main-integration` was created from the FSM scaffold branch. The local FSM/manual-testing/seed-reset work was checkpointed before merging main commit `3c85b18`.
+
+- Resolved the collection-list conflict by keeping `compliance_fsms`, `tenant_controls`, and all three new blockchain collections/indexes.
+- Retained the six-leg event contracts and main's EVM dispatch-reference fields, vector index, connector, indexer, event bus, pinning, and semantic-search modules.
+- Added the incoming blockchain code's required `eth-abi` runtime dependency and updated the lockfile.
+- **83 tests passed**, including Atlas tests in disposable namespaces. The merged indexer wrote valid blocks, transactions, and decoded events for two tenants; a same-height fork orphaned only the affected tenant's events.
+- Blockchain connector/pinning tests use mocked RPC. A deployed chain and the durable FSM runtime were not exercised by this merge verification.
+- Lint, formatting, locked dependency sync, package build, Compose configuration, and isolated wheel imports passed.
+
 ## Seed reset update
 
 Verified on November 14, 2026: **68 tests passed**, including the Atlas reset integration test in a uniquely named disposable `chainlex_manual_verify_*` database. Test cleanup removed only that database.

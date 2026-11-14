@@ -8,6 +8,7 @@ Project scaffold for a governed, auditable settlement-compliance agent. The appr
 - Validated settings, tenant-bound demo authentication, typed six-leg FSM/event/action contracts, and connector protocol.
 - API liveness/readiness, OpenAPI route contracts, and an explicit scaffold status page.
 - Persistent MongoDB-backed simulator operations with idempotency and delayed verification.
+- EVM connector, chain indexer, event-bus, audit-pinning, and semantic-search modules with mocked-RPC tests; these are not yet wired into the compliance FSM worker.
 - MongoDB collection/index bootstrap, replica-set preflight, and clearly labelled demo fixtures.
 - Unit/HTTP tests, opt-in MongoDB integration tests, linting, package-build checks, and CI.
 
@@ -138,6 +139,7 @@ src/chainlex/
   domain/       Six legs, state/event catalog, checkpoints, and transition contracts
   db/           Async MongoDB lifecycle, indexes, bootstrap, fixture seed
   connectors/   Settlement connector protocol and simulator HTTP adapter
+  blockchain/   Chain indexing, decoded events, audit pinning, and transaction search
   services/     Analyst, policy gate, event-driven FSM repository, and proposal interfaces
   simulator/    Durable fictional settlement operations and HTTP service
   worker/       Independent idle worker entry point and shutdown handling
