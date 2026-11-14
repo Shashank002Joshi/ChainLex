@@ -86,3 +86,10 @@ to run integration tests against uniquely named disposable databases.
 - [FSM states, events, guards, and recovery](./docs/fsm.md)
 - [Country corpus, embedding, and bank policies](./docs/country-rules.md)
 - [Settlement events and indexing](./docs/settlement-events.md)
+
+## Presentation source material
+
+- [Architecture, six-leg workflow, demo, and roadmap](./chainlex_enriched_hackathon_plan.md)
+- [FireFly-inspired architecture and diagrams](./firefly_fsm_chainlex_plan.md)
+
+These plans include proposed capabilities; use the current scope above when describing what the application executes today.
