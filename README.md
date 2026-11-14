@@ -167,6 +167,7 @@ The live Voyage/Vector Search test additionally requires
 
 ## References
 
+- [MongoDB document model, field reasoning, and API flow diagrams](./docs/mongodb-data-model.md)
 - [FSM states, events, guards, and recovery](./docs/fsm.md)
 - [Country corpus, embedding, and bank policies](./docs/country-rules.md)
 - [Settlement events and indexing](./docs/settlement-events.md)

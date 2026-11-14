@@ -276,11 +276,11 @@ async function verifyRequest(button) {
   if (!form.reportValidity()) return;
   button.disabled = true;
   button.innerHTML = '<span class="spinner"></span>Checking…';
-  const payload = verificationPayload(form, state.transactionConfig?.signer);
+  const payload = verificationPayload(form);
   try {
     const result = await state.api.request("/api/compliance/verify", { method: "POST", body: payload });
     const current = $("#transaction-form");
-    if (!current || JSON.stringify(verificationPayload(current, state.transactionConfig?.signer)) !== JSON.stringify(payload)) { toast("Inputs changed. Run preflight again for the current request."); return; }
+    if (!current || JSON.stringify(verificationPayload(current)) !== JSON.stringify(payload)) { toast("Inputs changed. Run preflight again for the current request."); return; }
     state.verification = result;
     if ($("#verification-result")) $("#verification-result").innerHTML = verificationView(state.verification);
     toast("Simulated preflight complete. No Sepolia transaction was submitted.");

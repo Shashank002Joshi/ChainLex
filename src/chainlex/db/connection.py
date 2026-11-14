@@ -47,4 +47,4 @@ async def database_readiness(request: Request):
         await database.command("ping")
     except PyMongoError as exc:
         raise HTTPException(503, detail={"code": "DATABASE_UNAVAILABLE"}) from exc
-    return {"status": "ready", "database": "reachable", "workflow": "scaffold"}
+    return {"status": "ready", "database": "reachable", "workflow": "audit_agents"}

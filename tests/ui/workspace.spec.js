@@ -111,11 +111,16 @@ test("failed connection is actionable and never turns a preview into live data",
 
 test("transaction preflight renders the latest backend court and six-leg result", async ({ page }) => {
   await page.route("**/api/audits/scenarios", route => route.fulfill({ json: { scenarios: { corridor_audit: "Corridor audit" } } }));
-  await page.route("**/api/transactions/config", route => route.fulfill({ json: { configured: false } }));
+  await page.route("**/api/transactions/config", route => route.fulfill({ json: { configured: true, signer: "0x9999999999999999999999999999999999999999" } }));
   await page.goto("/#transactions");
   await page.getByRole("button", { name: "Run preflight" }).click();
   await page.getByLabel("Workspace access token").fill("preflight-test");
   await page.getByRole("dialog").getByRole("button", { name: "Connect workspace", exact: true }).click();
+  const standard = page.waitForRequest(r => r.url().endsWith("/api/compliance/verify"));
+  await page.getByRole("button", { name: "Run preflight" }).click();
+  const standardPayload = (await standard).postDataJSON();
+  expect(standardPayload.initiator_address).toBe("0x1111111111111111111111111111111111111111");
+  await expect(page.locator("#verification-result .panel-head .badge")).toHaveText("Pass");
   await page.getByLabel("Preflight scenario").selectOption("sanctions_blocked");
   const request = page.waitForRequest(r => r.url().endsWith("/api/compliance/verify"));
   await page.getByRole("button", { name: "Run preflight" }).click();
