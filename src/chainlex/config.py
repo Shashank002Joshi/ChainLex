@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     rerank_model: str = "rerank-2.5"
     llm_api_key: SecretStr = SecretStr("")
     llm_model: str = ""
+    sepolia_private_key: SecretStr = SecretStr("")
+    sepolia_rpc_url: str = "https://ethereum-sepolia-rpc.publicnode.com"
+    sepolia_contract_address: str = Field(default="", pattern=r"^(?:|0x[0-9a-fA-F]{40})$")
     lease_seconds: int = Field(default=10, ge=2)
     heartbeat_seconds: float = Field(default=3, gt=0)
     poll_seconds: float = Field(default=1, gt=0)
