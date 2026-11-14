@@ -1,13 +1,13 @@
-"""Semantic blockchain transaction explorer combining Voyage AI embeddings and Atlas Vector Search."""
+"""Semantic blockchain transaction explorer combining Voyage AI and Atlas Vector Search."""
 
 from typing import Any
 
 
 def format_tx_narrative(tx: dict[str, Any]) -> str:
-    """Formats raw transaction fields into an interpretable financial/compliance narrative."""
+    """Formats raw transaction fields into an interpretable financial narrative."""
     from_addr = tx.get("from", "unknown")
     to_addr = tx.get("to", "unknown")
-    amount = tx.get("value_minor", 0) / 100.0  # e.g., cents to dollars
+    amount = tx.get("value_minor", 0) / 100.0
     currency = tx.get("currency", "USD")
     block = tx.get("block_number", "pending")
     status = "SUCCESS" if tx.get("status", 1) == 1 else "FAILED"
@@ -22,16 +22,20 @@ def format_tx_narrative(tx: dict[str, Any]) -> str:
 
 
 class TransactionVectorizer:
-    """Vectorizes on-chain transactions and executes Atlas Vector Search pipelines."""
+    """Vectorizes on-chain transactions and executes tenant-scoped Atlas Vector Search."""
 
     def __init__(self, db: Any, voyage_client: Any = None, tenant_id: str = "bank_a"):
         self.db = db
         self.voyage = voyage_client
         self.tenant_id = tenant_id
 
-    async def vectorize_transaction(self, tx_hash: str, custom_vector: list[float] | None = None) -> list[float] | None:
+    async def vectorize_transaction(
+        self, tx_hash: str, custom_vector: list[float] | None = None
+    ) -> list[float] | None:
         """Embeds a stored transaction narrative and saves to chain_transactions.embedding."""
-        tx = await self.db.chain_transactions.find_one({"tx_hash": tx_hash})
+        tx = await self.db.chain_transactions.find_one(
+            {"tenant_id": self.tenant_id, "tx_hash": tx_hash}
+        )
         if not tx:
             return None
 
@@ -40,14 +44,13 @@ class TransactionVectorizer:
         if custom_vector is not None:
             embedding = custom_vector
         elif self.voyage is not None:
-            # Call Voyage AI voyage-finance-2 embedding API
             res = self.voyage.embed([narrative], model="voyage-finance-2")
             embedding = res.embeddings[0]
         else:
             return None
 
         await self.db.chain_transactions.update_one(
-            {"tx_hash": tx_hash},
+            {"tenant_id": self.tenant_id, "tx_hash": tx_hash},
             {"$set": {"embedding": embedding, "narrative": narrative}},
         )
         return embedding
@@ -58,7 +61,7 @@ class TransactionVectorizer:
         limit: int = 10,
         num_candidates: int = 50,
     ) -> list[dict[str, Any]]:
-        """Constructs an Atlas $vectorSearch pipeline scoped by tenant and canonical status."""
+        """Constructs an Atlas $vectorSearch pipeline scoped strictly by tenant."""
         return [
             {
                 "$vectorSearch": {

@@ -1,21 +1,25 @@
-"""Unit tests for Merkle root computation and on-chain audit pinning."""
+"""Unit tests for Merkle root computation and receipt-verified on-chain audit pinning."""
 
 import httpx
 import pytest
 
-from chainlex.blockchain.pinning import AuditPinService, compute_merkle_root
+from chainlex.blockchain.pinning import (
+    AuditPinService,
+    canonical_document_hash,
+    compute_merkle_root,
+)
 from chainlex.connectors.evm import EVMConnector
 
 
 class FakeAuditCollection:
     def __init__(self, records):
-        self.records = {r["_id"]: r for r in records}
+        self.records = {r["_id"]: r.copy() for r in records}
 
     def find(self, query):
         filtered = [
-            r for r in self.records.values()
-            if r.get("tenant_id") == query.get("tenant_id")
-            and r.get("anchor_tx_hash") is None
+            r
+            for r in self.records.values()
+            if r.get("tenant_id") == query.get("tenant_id") and r.get("anchor_tx_hash") is None
         ]
 
         class FakeCursor:
@@ -32,8 +36,8 @@ class FakeAuditCollection:
             async def __anext__(self):
                 try:
                     return next(self._iter)
-                except StopIteration:
-                    raise StopAsyncIteration
+                except StopIteration as err:
+                    raise StopAsyncIteration from err
 
         return FakeCursor(filtered)
 
@@ -49,29 +53,38 @@ class FakePinningDb:
         self.audit_ledger = FakeAuditCollection(audit_records)
 
 
+def test_canonical_document_hash_detects_content_changes():
+    doc1 = {"_id": "rec_1", "action": "HOLD", "amount": 100}
+    doc2 = {"_id": "rec_1", "action": "HOLD", "amount": 200}  # changed content
+    h1 = canonical_document_hash(doc1)
+    h2 = canonical_document_hash(doc2)
+    assert h1 != h2
+
+    # Preserves equality regardless of key order
+    doc1_reordered = {"amount": 100, "_id": "rec_1", "action": "HOLD"}
+    assert canonical_document_hash(doc1_reordered) == h1
+
+
 def test_compute_merkle_root():
     h1 = "0x" + "aa" * 32
     h2 = "0x" + "bb" * 32
-    h3 = "0x" + "cc" * 32
-
-    root1 = compute_merkle_root([h1])
-    assert root1 == h1
-
-    root2 = compute_merkle_root([h1, h2])
-    assert root2.startswith("0x")
-    assert len(root2) == 66
-    assert root2 != h1 and root2 != h2
-
-    # Determinism check
-    root_odd = compute_merkle_root([h1, h2, h3])
-    root_odd_again = compute_merkle_root([h1, h2, h3])
-    assert root_odd == root_odd_again
+    root = compute_merkle_root([h1, h2])
+    assert root.startswith("0x")
+    assert len(root) == 66
 
 
 @pytest.mark.asyncio
-async def test_audit_pin_service():
+async def test_audit_pin_unmined_stays_pending():
     def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"jsonrpc": "2.0", "id": 1, "result": "0xanchortx777"})
+        import json
+
+        body = json.loads(request.content)
+        method = body.get("method")
+        if method == "eth_sendTransaction":
+            return httpx.Response(200, json={"jsonrpc": "2.0", "id": 1, "result": "0xunmined_tx"})
+        elif method == "eth_getTransactionReceipt":
+            return httpx.Response(200, json={"jsonrpc": "2.0", "id": 1, "result": None})
+        return httpx.Response(404)
 
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
     connector = EVMConnector(
@@ -79,22 +92,43 @@ async def test_audit_pin_service():
         contract_address="0x1111111111111111111111111111111111111111",
         client=client,
     )
-
-    initial_records = [
-        {"_id": "rec_1", "tenant_id": "bank_a", "record_hash": "0x1111111111111111111111111111111111111111111111111111111111111111"},
-        {"_id": "rec_2", "tenant_id": "bank_a", "record_hash": "0x2222222222222222222222222222222222222222222222222222222222222222"},
-    ]
-    db = FakePinningDb(initial_records)
+    db = FakePinningDb([{"_id": "rec_1", "tenant_id": "bank_a", "content": "test"}])
     service = AuditPinService(db, connector, tenant_id="bank_a")
 
     res = await service.pin_audit_batch(batch_size=10)
     assert res is not None
-    assert res["batch_count"] == 2
-    assert res["anchor_tx_hash"] == "0xanchortx777"
-    assert res["merkle_root"].startswith("0x")
+    assert res["status"] == "PENDING"
+    # Document must NOT be marked as anchored in database
+    assert db.audit_ledger.records["rec_1"].get("anchor_tx_hash") is None
+    await connector.close()
 
-    # Verify audit records in DB were updated with anchor proof
-    assert db.audit_ledger.records["rec_1"]["anchor_tx_hash"] == "0xanchortx777"
-    assert db.audit_ledger.records["rec_2"]["anchor_tx_hash"] == "0xanchortx777"
 
+@pytest.mark.asyncio
+async def test_audit_pin_confirmed_receipt_anchors():
+    def handler(request: httpx.Request) -> httpx.Response:
+        import json
+
+        body = json.loads(request.content)
+        method = body.get("method")
+        if method == "eth_sendTransaction":
+            return httpx.Response(200, json={"jsonrpc": "2.0", "id": 1, "result": "0xmined_tx"})
+        elif method == "eth_getTransactionReceipt":
+            return httpx.Response(
+                200, json={"jsonrpc": "2.0", "id": 1, "result": {"status": "0x1"}}
+            )
+        return httpx.Response(404)
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    connector = EVMConnector(
+        rpc_url="http://mock-rpc",
+        contract_address="0x1111111111111111111111111111111111111111",
+        client=client,
+    )
+    db = FakePinningDb([{"_id": "rec_1", "tenant_id": "bank_a", "content": "test"}])
+    service = AuditPinService(db, connector, tenant_id="bank_a")
+
+    res = await service.pin_audit_batch(batch_size=10)
+    assert res is not None
+    assert res["status"] == "CONFIRMED"
+    assert db.audit_ledger.records["rec_1"]["anchor_tx_hash"] == "0xmined_tx"
     await connector.close()

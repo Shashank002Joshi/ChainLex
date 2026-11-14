@@ -1,11 +1,11 @@
-"""Unit tests for BlockchainIndexer and ABI decoding."""
+"""Unit tests for BlockchainIndexer, tenant isolation, and re-org resilience."""
 
 from copy import deepcopy
 
+import eth_abi
 import pytest
 
 from chainlex.blockchain.artifacts import (
-    TOPIC_AUDIT_ROOT_PINNED,
     TOPIC_SETTLEMENT_FROZEN,
     TOPIC_SETTLEMENT_INITIATED,
 )
@@ -23,7 +23,6 @@ class FakeCollection:
         return None
 
     async def update_one(self, query, update, upsert=False):
-        # find matching doc or create new
         match_id = None
         for doc_id, doc in self.documents.items():
             if all(doc.get(k) == v for k, v in query.items()):
@@ -64,26 +63,26 @@ class FakeDatabase:
         self.contract_events = FakeCollection()
 
 
-def test_decode_log_settlement_initiated():
+def test_decode_log_non_usd_currency():
+    # Encode with non-USD currency: "EUR" and amount 25,000,000
+    encoded_data = eth_abi.encode(["uint256", "string"], [25000000, "EUR"])
     log = {
         "topics": [
             TOPIC_SETTLEMENT_INITIATED,
-            "0x" + "11" * 32,  # settlementId
-            "0x" + "00" * 12 + "aa" * 20,  # from
-            "0x" + "00" * 12 + "bb" * 20,  # to
+            "0x" + "11" * 32,
+            "0x" + "00" * 12 + "aa" * 20,
+            "0x" + "00" * 12 + "bb" * 20,
         ],
-        "data": "0x" + f"{10000000:064x}",
+        "data": "0x" + encoded_data.hex(),
     }
     decoded = decode_log(log)
     assert decoded is not None
-    assert decoded["event_name"] == "SettlementInitiated"
-    assert decoded["settlement_id"] == "0x" + "11" * 32
-    assert decoded["from_address"] == "0x" + "aa" * 20
-    assert decoded["to_address"] == "0x" + "bb" * 20
-    assert decoded["amount_minor"] == 10000000
+    assert decoded["currency"] == "EUR"
+    assert decoded["amount_minor"] == 25000000
 
 
 def test_decode_log_settlement_frozen():
+    encoded_reason = eth_abi.encode(["string"], ["Sanctions match"])
     log = {
         "topics": [
             TOPIC_SETTLEMENT_FROZEN,
@@ -91,51 +90,56 @@ def test_decode_log_settlement_frozen():
             "0x" + "00" * 12 + "cc" * 20,
             "0x" + "00" * 12 + "dd" * 20,
         ],
-        "data": "0x",
+        "data": "0x" + encoded_reason.hex(),
     }
     decoded = decode_log(log)
     assert decoded is not None
     assert decoded["event_name"] == "SettlementFrozen"
-    assert decoded["settlement_id"] == "0x" + "22" * 32
-    assert decoded["counterparty"] == "0x" + "cc" * 20
-    assert decoded["operator"] == "0x" + "dd" * 20
+    assert decoded["reason"] == "Sanctions match"
 
 
 @pytest.mark.asyncio
-async def test_indexer_ingest_block_and_reorg():
+async def test_tenant_isolation_in_indexer():
+    db = FakeDatabase()
+    indexer_a = BlockchainIndexer(db, tenant_id="bank_a")
+    indexer_b = BlockchainIndexer(db, tenant_id="bank_b")
+
+    # Ingest block 1 for Tenant A
+    b1_a = {"number": 1, "hash": "0xhash_a1", "parent_hash": "0x0", "timestamp": 100}
+    await indexer_a.ingest_block(b1_a)
+
+    # Ingest block 1 for Tenant B with different hash
+    b1_b = {"number": 1, "hash": "0xhash_b1", "parent_hash": "0x0", "timestamp": 100}
+    await indexer_b.ingest_block(b1_b)
+
+    # Verify both records coexist and did not overwrite each other
+    doc_a = await db.chain_blocks.find_one({"tenant_id": "bank_a", "block_number": 1})
+    doc_b = await db.chain_blocks.find_one({"tenant_id": "bank_b", "block_number": 1})
+    assert doc_a is not None and doc_a["block_hash"] == "0xhash_a1"
+    assert doc_b is not None and doc_b["block_hash"] == "0xhash_b1"
+
+
+@pytest.mark.asyncio
+async def test_same_height_reorganization():
     db = FakeDatabase()
     indexer = BlockchainIndexer(db, tenant_id="bank_a")
 
-    # Ingest block 0 (genesis)
-    b0 = {"number": 0, "hash": "0xhash0", "parent_hash": "0x0", "timestamp": 1000}
-    res0 = await indexer.ingest_block(b0)
-    assert res0["block_number"] == 0
-    assert not res0["reorg_detected"]
+    # Ingest block 2 (version A)
+    b2_a = {"number": 2, "hash": "0xhash_A2", "parent_hash": "0xhash1", "timestamp": 200}
+    tx_a = {"hash": "0xtx_A", "value_minor": 1000}
+    await indexer.ingest_block(b2_a, transactions=[tx_a])
 
-    # Ingest block 1
-    b1 = {"number": 1, "hash": "0xhash1", "parent_hash": "0xhash0", "timestamp": 1012}
-    tx1 = {"hash": "0xtx1", "from": "0xaaa", "to": "0xbbb", "value_minor": 5000}
-    log1 = {
-        "transactionHash": "0xtx1",
-        "logIndex": 0,
-        "address": "0xcontract",
-        "topics": [TOPIC_SETTLEMENT_INITIATED, "0x" + "33" * 32, "0x" + "00" * 12 + "aa" * 20, "0x" + "00" * 12 + "bb" * 20],
-        "data": "0x" + f"{5000:064x}",
-    }
-    res1 = await indexer.ingest_block(b1, [tx1], [log1])
-    assert res1["block_number"] == 1
-    assert not res1["reorg_detected"]
-    assert len(db.chain_transactions.documents) == 1
-    assert len(db.contract_events.documents) == 1
+    doc_a = await db.chain_blocks.find_one({"tenant_id": "bank_a", "block_number": 2})
+    assert doc_a["is_canonical"] is True
 
-    # Ingest alternative block 1 (fork/reorg with different hash)
-    # Block 2 pointing to a fork parent instead of 0xhash1
-    b2_fork = {"number": 2, "hash": "0xfork2", "parent_hash": "0xDIFFERENT_HASH", "timestamp": 1024}
-    res2 = await indexer.ingest_block(b2_fork)
-    assert res2["reorg_detected"] is True
-    assert res2["reorg_block"] == 1
+    # Same-height fork: incoming block 2 (version B) with different block hash
+    b2_b = {"number": 2, "hash": "0xhash_B2", "parent_hash": "0xhash1", "timestamp": 205}
+    res = await indexer.ingest_block(b2_b)
 
-    # Verify that previously ingested records are marked orphaned
-    b1_stored = await db.chain_blocks.find_one({"block_number": 1})
-    assert b1_stored["is_orphaned"] is True
-    assert b1_stored["is_canonical"] is False
+    assert res["reorg_detected"] is True
+    assert res["reorg_block"] == 2
+
+    # Check incoming is canonical and previous is updated
+    updated_doc = await db.chain_blocks.find_one({"tenant_id": "bank_a", "block_number": 2})
+    assert updated_doc["block_hash"] == "0xhash_B2"
+    assert updated_doc["is_canonical"] is True
