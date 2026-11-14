@@ -1,6 +1,10 @@
 # Manual testing: six-leg FSM scaffold and MongoDB
 
-This runbook covers the current scaffold: startup, database setup, the six-leg FSM definition, authentication, and persistent simulator holds. The FSM instance handlers still return `501 WORKFLOW_NOT_IMPLEMENTED`; they do not yet advance a settlement through the six legs.
+This runbook covers the separate settlement scaffold: startup, database setup,
+the settlement FSM definition, authentication, and persistent simulator holds.
+Settlement FSM instance handlers still return `501 WORKFLOW_NOT_IMPLEMENTED`.
+For the implemented three-agent audit, human gates and PDF downloads, follow
+the [audit API steps in the README](../README.md#run-an-audit-through-swagger).
 
 Use the Atlas connection and tokens already saved in `.env`. These steps use a separate database, **`chainlex_manual_fsm`**, on that cluster so manual-test counts are easy to inspect. Set the database variable in **every terminal** shown below. The commands do not change `.env`. Docker is not required when using Atlas.
 
@@ -72,7 +76,9 @@ export CHAINLEX_DATABASE=chainlex_manual_fsm
 uv run chainlex-worker --once
 ```
 
-Expected log: `worker=fsm_scaffold_idle database=ready fsm_processing=not_implemented`. This command exits after startup validation and does not create FSM records.
+Expected log includes `worker=audit_agents database=ready`. This command exits
+after startup validation and does not process audits. Run `uv run chainlex-worker`
+continuously when following the audit steps in the README.
 
 For all remaining terminal commands, continue in Terminal C with the same database variable set.
 
@@ -458,4 +464,8 @@ Passing checklist:
 - [ ] Simulator restart preserves that same operation and timestamps.
 - [ ] If reset was requested, preview was read-only; confirmed execution cleared runtime records, restored the ten fixtures, and retained indexes.
 
-If a request fails, check that both services and your test terminal use the same database and cluster. `401` means the service token does not match; readiness `503` means database configuration/connectivity needs attention. `Address already in use` usually means an older service still occupies the port. A 501 from a documented instance/governance route is expected at this stage.
+If a request fails, check that both services and your test terminal use the same
+database and cluster. `401` means the service token does not match; readiness
+`503` means database configuration/connectivity needs attention. `Address already
+in use` usually means an older service still occupies the port. A 501 from a
+settlement instance/proposal route is expected; audit and governance routes are implemented.

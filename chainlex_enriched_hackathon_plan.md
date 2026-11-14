@@ -1,5 +1,48 @@
 # ChainLex: Enriched Hackathon Plan and Roadmap
 
+## Approved audit-agent implementation
+
+The current implementation increment delivers an audit-only API workflow. The
+settlement architecture below remains separate; this increment does not submit
+holds or transfer funds. Human analyst/officer access permissions remain intact.
+
+| Agent | Hackathon statement | Responsibility |
+|---|---|---|
+| Auditable Action Agent | Agents You Can Audit | Cited findings, per-bank route comparisons, identity-bound action proposals and deterministic pre-action policy checks |
+| Governed Memory Agent | Memory You Can Govern | Tenant/clearance/expiry-filtered Vector Search, versioned corrections, invalidation, and saved comparisons showing memory's effect |
+| Durable Completion Agent | Finish the Job | One persisted audit FSM, fenced leases, checkpoints, bounded retries, and verified report publication after restart |
+
+Agent reasoning uses explicitly labelled scripted demo fixtures. Voyage embeddings
+and Atlas persistence are real. Official-source corridor discovery is represented
+by attributed fixture candidates until live AI/web research is added. Existing
+unverified regulations and inactive policies are never silently promoted.
+
+The audit FSM progresses through intake, evidence, analysis, draft publication,
+human review, and finalization. Completed steps persist immutable artifacts.
+Human decisions bind to an analysis digest; missing evidence or explicit denial
+cannot be waived. Required gates cover evidence, discovered-corridor verification,
+memory-driven issues, and final officer sign-off. A rejection is a recorded outcome.
+
+Reports contain route comparisons, checks at each bank/jurisdiction, citations,
+agent authority and policy decisions, memory influence, human gates, the event
+timeline and integrity digests. Draft and final PDFs are immutable versions in
+GridFS; publication completes only after reading back and checking the bytes.
+Pause blocks new action permits; already permitted actions are reconciled.
+Change Streams accelerate governance notification, with authoritative reads and
+durable polling retained. Supported connector schema changes use allowlisted
+versioned adapters; unknown changes require human review.
+
+Implementation sequence:
+
+1. Add typed audit/agent contracts and tenant-scoped demo scenarios.
+2. Implement action authority, governed memory, route evaluation and ablation.
+3. Implement transactional checkpoints, audit events, leases and PDF publication.
+4. Expose audit, decision, control, memory and policy governance APIs via Swagger.
+5. Verify tenant isolation, denial, stale decisions, recovery, schema changes,
+   memory influence and PDF content with offline and disposable Atlas tests.
+
+Free-model integration and an operator dashboard are follow-up increments.
+
 ## 1. Goal and scope
 
 Enrich the repository's [execution plan](./firefly_fsm_chainlex_plan.md) around one demonstrable outcome:

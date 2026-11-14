@@ -8,11 +8,15 @@ from uuid import uuid4
 import httpx
 from pymongo.errors import PyMongoError
 
+from chainlex.audit.memory import GovernedMemoryAgent
+from chainlex.audit.repository import AuditRepository
+from chainlex.audit.search import provision_audit_indexes
 from chainlex.config import Settings
 from chainlex.db.connection import create_client
 from chainlex.db.corpus_seeding import seed_latest
 from chainlex.db.indexes import LegacySchemaError, bootstrap
 from chainlex.db.seed_reset import SeedResetError, reset_seed_demo, validate_reset_target
+from chainlex.services.embeddings import VoyageEmbeddings
 
 
 async def preflight(client, database) -> dict:
@@ -56,6 +60,31 @@ async def run(
         if command == "bootstrap":
             await bootstrap(database)
             return {"bootstrap": "complete"}
+        if command == "audit-indexes":
+            return await provision_audit_indexes(database)
+        if command == "seed-audit-demo":
+            repo = AuditRepository(database, settings.lease_seconds)
+            await repo.ensure_tenant(settings.demo_tenant_id)
+            key = settings.voyage_api_key.get_secret_value()
+            result = {
+                "mode": "scripted_demo",
+                "agents": 3,
+                "scenarios": 5,
+                "memory": {"status": "skipped", "reason": "VOYAGE_NOT_CONFIGURED"},
+            }
+            if key:
+                async with httpx.AsyncClient(timeout=30) as http:
+                    memory = GovernedMemoryAgent(
+                        repo, VoyageEmbeddings(http, key, settings.embedding_endpoint)
+                    )
+                    record = await memory.ensure_demo(settings.demo_tenant_id)
+                    result["memory"] = {
+                        "status": "preserved_or_created",
+                        "memory_id": record["memory_id"],
+                        "version": record["version"],
+                        "is_active": record["is_active"],
+                    }
+            return result
         if reset:
             return await reset_seed_demo(database, execute=execute, confirmation=confirmation)
         return await seed_latest(database, settings)
@@ -76,7 +105,10 @@ def validate_reset_options(command, database_name, reset, execute, confirmation)
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("bootstrap", "preflight", "seed-demo"))
+    parser.add_argument(
+        "command",
+        choices=("bootstrap", "preflight", "seed-demo", "audit-indexes", "seed-audit-demo"),
+    )
     parser.add_argument("--database", help="Explicit database namespace override")
     parser.add_argument(
         "--reset", action="store_true", help="Preview resetting manual runs and demo fixtures"
@@ -97,6 +129,12 @@ def main() -> None:
     except (LegacySchemaError, SeedResetError) as exc:
         parser.exit(1, f"{exc}\n")
     except httpx.HTTPError:
+        if args.command == "seed-audit-demo":
+            parser.exit(
+                1,
+                "Audit identities/scenarios were seeded; memory embedding failed. "
+                "Retry when Voyage is available.\n",
+            )
         parser.exit(
             1,
             "Policies were seeded independently, but Voyage embedding failed. "

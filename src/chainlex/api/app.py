@@ -7,11 +7,13 @@ import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 
+from chainlex.audit.api import install_exception_handlers
+from chainlex.audit.api import router as audit_router
 from chainlex.auth import Principal, current_principal, require_officer
 from chainlex.config import Settings
 from chainlex.db.connection import database_lifespan, database_readiness
 from chainlex.domain.fsm import LEG_STATES, STATE_DEFINITIONS
-from chainlex.domain.models import ControlRequest, CreateFSM, InvalidateMemory, ProposalDecision
+from chainlex.domain.models import CreateFSM, ProposalDecision
 from chainlex.domain.transitions import TRANSITIONS
 from chainlex.services.contracts import ComplianceFSM
 
@@ -30,10 +32,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(
         title="ChainLex API",
         version="0.1.0",
-        description="Scaffold contracts; workflow operations currently return 501.",
+        description=(
+            "Working audit agents, human gates and reports; "
+            "settlement FSM routes remain scaffolded."
+        ),
         lifespan=database_lifespan,
     )
     app.state.settings = settings if settings is not None else Settings()
+    app.include_router(audit_router)
+    install_exception_handlers(app)
 
     @app.get("/", include_in_schema=False)
     def index():
@@ -95,18 +102,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def decide_proposal(
         proposal_id: str,
         body: ProposalDecision,
-        principal: Principal = Depends(require_officer),
-    ):
-        unfinished()
-
-    @app.post("/api/control", tags=["governance"])
-    async def control(body: ControlRequest, principal: Principal = Depends(require_officer)):
-        unfinished()
-
-    @app.post("/api/memories/{memory_id}/invalidate", tags=["governance"])
-    async def invalidate_memory(
-        memory_id: str,
-        body: InvalidateMemory,
         principal: Principal = Depends(require_officer),
     ):
         unfinished()

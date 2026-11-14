@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     poll_seconds: float = Field(default=1, gt=0)
     max_step_attempts: int = Field(default=3, ge=1, le=10)
     reconciliation_seconds: int = Field(default=120, ge=1)
+    audit_worker_id: str = Field(default="audit-worker-1", min_length=1, max_length=128)
 
     @model_validator(mode="after")
     def validate_runtime(self) -> Self:
