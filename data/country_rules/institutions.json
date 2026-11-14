@@ -1,0 +1,34 @@
+[
+  {
+    "institution_id": "scotiabank",
+    "display_name": "Scotiabank",
+    "jurisdiction": "CA",
+    "institution_type": "BANK",
+    "source_url": "https://www.scotiabank.com/ca/en/about.html",
+    "is_demo_fixture": true
+  },
+  {
+    "institution_id": "jpmorgan_chase",
+    "display_name": "JPMorgan Chase",
+    "jurisdiction": "US",
+    "institution_type": "BANK",
+    "source_url": "https://www.jpmorganchase.com/about",
+    "is_demo_fixture": true
+  },
+  {
+    "institution_id": "dbs",
+    "display_name": "DBS Bank",
+    "jurisdiction": "SG",
+    "institution_type": "BANK",
+    "source_url": "https://eservices.mas.gov.sg/fid/institution/detail/166-DBS-BANK-LTD",
+    "is_demo_fixture": true
+  },
+  {
+    "institution_id": "wealthsimple",
+    "display_name": "Wealthsimple",
+    "jurisdiction": "CA",
+    "institution_type": "FINANCIAL_SERVICES_PLATFORM",
+    "source_url": "https://www.wealthsimple.com/en-ca/magazine/how-safe-is-a-bank-account",
+    "is_demo_fixture": true
+  }
+]

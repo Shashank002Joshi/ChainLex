@@ -124,7 +124,7 @@ All settings use the `CHAINLEX_` prefix; `.env` is local-only and ignored by Git
 | `ANALYST_TOKEN`, `OFFICER_TOKEN` | Distinct bearer tokens for the configured demo tenant |
 | `DEMO_TENANT_ID` | Server-owned tenant binding for both demo roles |
 | `SIMULATOR_TOKEN`, `SIMULATOR_URL` | Separate connector credential and simulator endpoint |
-| `VOYAGE_API_KEY`, `EMBEDDING_MODEL`, `RERANK_MODEL` | Reserved retrieval configuration; no provider calls yet |
+| `VOYAGE_API_KEY`, `EMBEDDING_MODEL`, `RERANK_MODEL` | Shared Voyage embedding configuration; model fixed to `voyage-finance-2` for the 1024-dimensional indexes; reranking reserved |
 | `LLM_API_KEY`, `LLM_MODEL` | Reserved analyst configuration; no provider calls yet |
 | `LEASE_SECONDS`, `HEARTBEAT_SECONDS`, `POLL_SECONDS` | Future worker timing; heartbeat must be shorter than lease |
 | `MAX_STEP_ATTEMPTS`, `RECONCILIATION_SECONDS` | Three attempts per step and a 120-second automated reconciliation deadline |
@@ -174,3 +174,10 @@ The integration test uses a unique database and drops only that database afterwa
 4. Replace the status page with the operator dashboard and rehearse the three-minute demo.
 
 See the enriched plan for the complete acceptance criteria and ordered roadmap.
+
+Country corpus ingestion and retrieval are now available as standalone services;
+see [country rules](docs/country-rules.md). Transactions, regulations and search
+queries use the same async `VoyageEmbeddings` client in
+`src/chainlex/services/embeddings.py`. Transaction/regulation text is embedded as
+`document`, search text as `query`. These services are not wired into the idle
+worker or scaffold workflow endpoints yet.

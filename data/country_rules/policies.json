@@ -1,0 +1,146 @@
+[
+  {
+    "policy_id": "SG-INTERNAL-REVIEW-001",
+    "jurisdiction": "SG",
+    "source_rule_ids": [
+      "SG-MAS-CDD-001"
+    ],
+    "required_fact": "cdd_complete",
+    "description": "Internal demo review control for PSN02 customer due diligence. The analyst must establish applicability and set cdd_complete from evidence; false or unknown requires officer review. This control does not mandate freezing, rejection or regulatory filing.",
+    "version": 1,
+    "outcome": "REVIEW",
+    "policy_type": "INTERNAL_DEMO"
+  },
+  {
+    "policy_id": "SG-INTERNAL-MONITOR-001",
+    "jurisdiction": "SG",
+    "source_rule_ids": [
+      "SG-MAS-MONITOR-001"
+    ],
+    "required_fact": "monitoring_review_complete",
+    "description": "Internal demo review control for PSN02 suspicious activity monitoring. The analyst must establish applicability and set monitoring_review_complete from evidence; false or unknown requires officer review. This control does not mandate freezing, rejection or regulatory filing.",
+    "version": 1,
+    "outcome": "REVIEW",
+    "policy_type": "INTERNAL_DEMO"
+  },
+  {
+    "policy_id": "SG-INTERNAL-RECORDS-001",
+    "jurisdiction": "SG",
+    "source_rule_ids": [
+      "SG-MAS-RECORDS-001"
+    ],
+    "required_fact": "recordkeeping_complete",
+    "description": "Internal demo review control for PSN02 record keeping. The analyst must establish applicability and set recordkeeping_complete from evidence; false or unknown requires officer review. This control does not mandate freezing, rejection or regulatory filing.",
+    "version": 1,
+    "outcome": "REVIEW",
+    "policy_type": "INTERNAL_DEMO"
+  },
+  {
+    "policy_id": "SG-INTERNAL-RISK-001",
+    "jurisdiction": "SG",
+    "source_rule_ids": [
+      "SG-MAS-RISK-001"
+    ],
+    "required_fact": "risk_assessment_complete",
+    "description": "Internal demo review control for PSN02 risk assessment and mitigation. The analyst must establish applicability and set risk_assessment_complete from evidence; false or unknown requires officer review. This control does not mandate freezing, rejection or regulatory filing.",
+    "version": 1,
+    "outcome": "REVIEW",
+    "policy_type": "INTERNAL_DEMO"
+  },
+  {
+    "policy_id": "CA-INTERNAL-REVIEW-001",
+    "jurisdiction": "CA",
+    "source_rule_ids": [
+      "CA-FINTRAC-TRAVEL-001"
+    ],
+    "required_fact": "travel_rule_complete",
+    "description": "Internal demo review control for Virtual currency transfer information. The analyst must establish applicability and set travel_rule_complete from evidence; false or unknown requires officer review. This control does not mandate freezing, rejection or regulatory filing.",
+    "version": 1,
+    "outcome": "REVIEW",
+    "policy_type": "INTERNAL_DEMO"
+  },
+  {
+    "policy_id": "CA-INTERNAL-MISSING-001",
+    "jurisdiction": "CA",
+    "source_rule_ids": [
+      "CA-FINTRAC-MISSING-001"
+    ],
+    "required_fact": "monitoring_review_complete",
+    "description": "Internal demo review control for Missing transfer information. The analyst must establish applicability and set monitoring_review_complete from evidence; false or unknown requires officer review. This control does not mandate freezing, rejection or regulatory filing.",
+    "version": 1,
+    "outcome": "REVIEW",
+    "policy_type": "INTERNAL_DEMO"
+  },
+  {
+    "policy_id": "CA-INTERNAL-LVCTR-001",
+    "jurisdiction": "CA",
+    "source_rule_ids": [
+      "CA-FINTRAC-LVCTR-001"
+    ],
+    "required_fact": "reporting_review_complete",
+    "description": "Internal demo review control for Large virtual currency receipts. The analyst must establish applicability and set reporting_review_complete from evidence; false or unknown requires officer review. This control does not mandate freezing, rejection or regulatory filing.",
+    "version": 1,
+    "outcome": "REVIEW",
+    "policy_type": "INTERNAL_DEMO"
+  },
+  {
+    "policy_id": "CA-INTERNAL-AGGREGATION-001",
+    "jurisdiction": "CA",
+    "source_rule_ids": [
+      "CA-FINTRAC-AGGREGATION-001"
+    ],
+    "required_fact": "reporting_review_complete",
+    "description": "Internal demo review control for Consecutive 24-hour aggregation. The analyst must establish applicability and set reporting_review_complete from evidence; false or unknown requires officer review. This control does not mandate freezing, rejection or regulatory filing.",
+    "version": 1,
+    "outcome": "REVIEW",
+    "policy_type": "INTERNAL_DEMO"
+  },
+  {
+    "policy_id": "US-INTERNAL-REVIEW-001",
+    "jurisdiction": "US",
+    "source_rule_ids": [
+      "US-OFAC-SANCTIONS-001"
+    ],
+    "required_fact": "sanctions_clear",
+    "description": "Internal demo review control for Virtual currency sanctions scope. The analyst must establish applicability and set sanctions_clear from evidence; false or unknown requires officer review. This control does not mandate freezing, rejection or regulatory filing.",
+    "version": 1,
+    "outcome": "REVIEW",
+    "policy_type": "INTERNAL_DEMO"
+  },
+  {
+    "policy_id": "US-INTERNAL-SCREENING-001",
+    "jurisdiction": "US",
+    "source_rule_ids": [
+      "US-OFAC-SCREENING-001"
+    ],
+    "required_fact": "monitoring_review_complete",
+    "description": "Internal demo review control for Risk-based sanctions screening. The analyst must establish applicability and set monitoring_review_complete from evidence; false or unknown requires officer review. This control does not mandate freezing, rejection or regulatory filing.",
+    "version": 1,
+    "outcome": "REVIEW",
+    "policy_type": "INTERNAL_DEMO"
+  },
+  {
+    "policy_id": "US-INTERNAL-OWNERSHIP-001",
+    "jurisdiction": "US",
+    "source_rule_ids": [
+      "US-OFAC-OWNERSHIP-001"
+    ],
+    "required_fact": "beneficial_ownership_checked",
+    "description": "Internal demo review control for Blocked entity ownership. The analyst must establish applicability and set beneficial_ownership_checked from evidence; false or unknown requires officer review. This control does not mandate freezing, rejection or regulatory filing.",
+    "version": 1,
+    "outcome": "REVIEW",
+    "policy_type": "INTERNAL_DEMO"
+  },
+  {
+    "policy_id": "US-INTERNAL-SCOPE-001",
+    "jurisdiction": "US",
+    "source_rule_ids": [
+      "US-FINCEN-SCOPE-001"
+    ],
+    "required_fact": "licensing_review_complete",
+    "description": "Internal demo review control for Convertible virtual currency business classification. The analyst must establish applicability and set licensing_review_complete from evidence; false or unknown requires officer review. This control does not mandate freezing, rejection or regulatory filing.",
+    "version": 1,
+    "outcome": "REVIEW",
+    "policy_type": "INTERNAL_DEMO"
+  }
+]

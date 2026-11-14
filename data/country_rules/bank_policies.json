@@ -1,0 +1,80 @@
+[
+  {
+    "policy_id": "scotiabank-originator-allowlist",
+    "tenant_id": "chainlex-demo",
+    "bank_id": "scotiabank",
+    "version": 1,
+    "policy_type": "BANK_ORIGINATOR_ALLOWLIST",
+    "scope": "ORIGINATING_BANK",
+    "allowed_originators": [
+      {
+        "wallet": {
+          "network": "ethereum-sepolia",
+          "address": "0x1111111111111111111111111111111111111111"
+        },
+        "label": "Wealthsimple demo identity — fictional address, not an actual Wealthsimple wallet"
+      },
+      {
+        "wallet": {
+          "network": "ethereum-sepolia",
+          "address": "0x2222222222222222222222222222222222222222"
+        },
+        "label": "Binance demo identity — fictional address, not an actual Binance wallet"
+      }
+    ],
+    "is_active": false,
+    "review_status": "UNVERIFIED"
+  },
+  {
+    "policy_id": "jpmorgan_chase-originator-allowlist",
+    "tenant_id": "chainlex-demo",
+    "bank_id": "jpmorgan_chase",
+    "version": 1,
+    "policy_type": "BANK_ORIGINATOR_ALLOWLIST",
+    "scope": "ORIGINATING_BANK",
+    "allowed_originators": [
+      {
+        "wallet": {
+          "network": "ethereum-sepolia",
+          "address": "0x1111111111111111111111111111111111111111"
+        },
+        "label": "Wealthsimple demo identity — fictional address, not an actual Wealthsimple wallet"
+      },
+      {
+        "wallet": {
+          "network": "ethereum-sepolia",
+          "address": "0x2222222222222222222222222222222222222222"
+        },
+        "label": "Binance demo identity — fictional address, not an actual Binance wallet"
+      }
+    ],
+    "is_active": false,
+    "review_status": "UNVERIFIED"
+  },
+  {
+    "policy_id": "dbs-originator-allowlist",
+    "tenant_id": "chainlex-demo",
+    "bank_id": "dbs",
+    "version": 1,
+    "policy_type": "BANK_ORIGINATOR_ALLOWLIST",
+    "scope": "ORIGINATING_BANK",
+    "allowed_originators": [
+      {
+        "wallet": {
+          "network": "ethereum-sepolia",
+          "address": "0x1111111111111111111111111111111111111111"
+        },
+        "label": "Wealthsimple demo identity — fictional address, not an actual Wealthsimple wallet"
+      },
+      {
+        "wallet": {
+          "network": "ethereum-sepolia",
+          "address": "0x2222222222222222222222222222222222222222"
+        },
+        "label": "Binance demo identity — fictional address, not an actual Binance wallet"
+      }
+    ],
+    "is_active": false,
+    "review_status": "UNVERIFIED"
+  }
+]

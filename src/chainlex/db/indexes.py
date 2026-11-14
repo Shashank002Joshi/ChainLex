@@ -19,6 +19,12 @@ COLLECTIONS = (
 )
 
 INDEXES = {
+    "policies": [
+        IndexModel(
+            [("tenant_id", 1), ("bank_id", 1), ("policy_type", 1), ("is_active", 1)],
+            name="bank_policy_lookup",
+        )
+    ],
     "entities": [
         IndexModel(
             [("tenant_id", ASCENDING), ("network", ASCENDING), ("address", ASCENDING)],

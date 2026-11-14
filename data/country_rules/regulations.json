@@ -1,0 +1,230 @@
+[
+  {
+    "rule_id": "SG-MAS-CDD-001",
+    "jurisdiction": "SG",
+    "regulator": "MAS",
+    "title": "PSN02 customer due diligence",
+    "section": "Notice overview: customer due diligence",
+    "rule_text": "Covered DPT providers need customer and beneficial owner identification controls. Periodic account review is also described by MAS.",
+    "source_url": "https://www.mas.gov.sg/regulation/notices/psn02-aml-cft-notice---digital-payment-token-service",
+    "retrieved_at": "2026-11-14",
+    "topics": [
+      "CDD"
+    ],
+    "applicability_notes": "Covered digital payment token service providers under MAS PSN02; confirm licence and activity scope.",
+    "example_query": "Are customer and beneficial owner checks sufficient for this Singapore DPT customer?",
+    "source_kind": "NOTICE_OVERVIEW",
+    "review_status": "UNVERIFIED",
+    "valid_from": null,
+    "valid_until": null
+  },
+  {
+    "rule_id": "SG-MAS-MONITOR-001",
+    "jurisdiction": "SG",
+    "regulator": "MAS",
+    "title": "PSN02 suspicious activity monitoring",
+    "section": "Notice overview: monitoring and suspicious transaction reporting",
+    "rule_text": "MAS describes monitoring and suspicious transaction reporting among DPT provider controls. Investigate unusual activity rather than treating amount or wallet type alone as proof of suspicion.",
+    "source_url": "https://www.mas.gov.sg/regulation/notices/psn02-aml-cft-notice---digital-payment-token-service",
+    "retrieved_at": "2026-11-14",
+    "topics": [
+      "TRANSACTION_MONITORING"
+    ],
+    "applicability_notes": "Covered digital payment token service providers under MAS PSN02; confirm licence and activity scope.",
+    "example_query": "A Singapore DPT transfer is unusual for this customer. What monitoring obligations should be reviewed?",
+    "source_kind": "NOTICE_OVERVIEW",
+    "review_status": "UNVERIFIED",
+    "valid_from": null,
+    "valid_until": null
+  },
+  {
+    "rule_id": "SG-MAS-RECORDS-001",
+    "jurisdiction": "SG",
+    "regulator": "MAS",
+    "title": "PSN02 record keeping",
+    "section": "Notice overview: record keeping",
+    "rule_text": "Record keeping forms part of PSN02 AML/CFT requirements. Determine the required records and retention rules from the current notice; this overview does not establish a retention period.",
+    "source_url": "https://www.mas.gov.sg/regulation/notices/psn02-aml-cft-notice---digital-payment-token-service",
+    "retrieved_at": "2026-11-14",
+    "topics": [
+      "RECORD_KEEPING"
+    ],
+    "applicability_notes": "Covered digital payment token service providers under MAS PSN02; confirm licence and activity scope.",
+    "example_query": "Which records should a Singapore DPT provider retain for this case?",
+    "source_kind": "NOTICE_OVERVIEW",
+    "review_status": "UNVERIFIED",
+    "valid_from": null,
+    "valid_until": null
+  },
+  {
+    "rule_id": "SG-MAS-RISK-001",
+    "jurisdiction": "SG",
+    "regulator": "MAS",
+    "title": "PSN02 risk assessment and mitigation",
+    "section": "Notice overview: risk assessment and risk mitigation",
+    "rule_text": "PSN02 includes risk assessment and mitigation, plus internal compliance policies, audit and training. Review whether the provider's controls address the identified money laundering and terrorist financing risks.",
+    "source_url": "https://www.mas.gov.sg/regulation/notices/psn02-aml-cft-notice---digital-payment-token-service",
+    "retrieved_at": "2026-11-14",
+    "topics": [
+      "AML_CFT"
+    ],
+    "applicability_notes": "Covered digital payment token service providers under MAS PSN02; confirm licence and activity scope.",
+    "example_query": "Which Singapore AML/CFT controls need review for a high-risk DPT relationship?",
+    "source_kind": "NOTICE_OVERVIEW",
+    "review_status": "UNVERIFIED",
+    "valid_from": null,
+    "valid_until": null
+  },
+  {
+    "rule_id": "CA-FINTRAC-TRAVEL-001",
+    "jurisdiction": "CA",
+    "regulator": "FINTRAC",
+    "title": "Virtual currency transfer information",
+    "section": "VC — travel rule",
+    "rule_text": "Covered financial entities, MSBs and foreign MSBs include originator and beneficiary name, address and account or reference information where applicable with outgoing VC transfers. Incoming transfers requiring a VC record need reasonable measures to obtain the information.",
+    "source_url": "https://fintrac-canafe.canada.ca/guidance-directives/transaction-operation/travel-acheminement/1-eng",
+    "retrieved_at": "2026-11-14",
+    "topics": [
+      "TRAVEL_RULE"
+    ],
+    "applicability_notes": "Covered Canadian reporting entities; check entity type, direction, record trigger and exceptions in the cited guidance.",
+    "example_query": "Which originator and beneficiary information is needed for a Canadian VC transfer?",
+    "source_kind": "GUIDANCE",
+    "review_status": "UNVERIFIED",
+    "valid_from": null,
+    "valid_until": null
+  },
+  {
+    "rule_id": "CA-FINTRAC-MISSING-001",
+    "jurisdiction": "CA",
+    "regulator": "FINTRAC",
+    "title": "Missing transfer information",
+    "section": "Section 2: missing required information",
+    "rule_text": "When required transfer information is absent, take reasonable measures to obtain it. Document risk-based policies for allowing, suspending or rejecting the transfer if information remains unavailable; missing data does not by itself establish a universal rejection requirement.",
+    "source_url": "https://fintrac-canafe.canada.ca/guidance-directives/transaction-operation/travel-acheminement/1-eng",
+    "retrieved_at": "2026-11-14",
+    "topics": [
+      "MISSING_TRANSFER_INFORMATION"
+    ],
+    "applicability_notes": "Covered Canadian reporting entities; check entity type, direction, record trigger and exceptions in the cited guidance.",
+    "example_query": "A received Canadian VC transfer lacks beneficiary data. Must it always be rejected?",
+    "source_kind": "GUIDANCE",
+    "review_status": "UNVERIFIED",
+    "valid_from": null,
+    "valid_until": null
+  },
+  {
+    "rule_id": "CA-FINTRAC-LVCTR-001",
+    "jurisdiction": "CA",
+    "regulator": "FINTRAC",
+    "title": "Large virtual currency receipts",
+    "section": "Sections 2–3; exceptions in section 7",
+    "rule_text": "Reporting entities assess receipts equivalent to CAD 10,000 or more for LVCTR reporting, including relevant exceptions. The guidance also applies a consecutive 24-hour aggregation rule. A receipt threshold is not a blanket outgoing-transfer prohibition.",
+    "source_url": "https://fintrac-canafe.canada.ca/guidance-directives/transaction-operation/lvctr/lvctr-eng",
+    "retrieved_at": "2026-11-14",
+    "topics": [
+      "LARGE_VC_REPORTING"
+    ],
+    "applicability_notes": "Covered Canadian reporting entities; check entity type, direction, record trigger and exceptions in the cited guidance.",
+    "example_query": "Does a CAD 12,000 virtual currency receipt require an LVCTR assessment?",
+    "source_kind": "GUIDANCE",
+    "review_status": "UNVERIFIED",
+    "valid_from": null,
+    "valid_until": null
+  },
+  {
+    "rule_id": "CA-FINTRAC-AGGREGATION-001",
+    "jurisdiction": "CA",
+    "regulator": "FINTRAC",
+    "title": "Consecutive 24-hour aggregation",
+    "section": "Section 3: 24-hour rule",
+    "rule_text": "Related VC receipts may meet the CAD 10,000 reporting threshold in a consecutive 24-hour window. Check the specified person, entity, third-party or beneficiary linkage and exceptions using the full guidance before grouping transactions.",
+    "source_url": "https://fintrac-canafe.canada.ca/guidance-directives/transaction-operation/lvctr/lvctr-eng",
+    "retrieved_at": "2026-11-14",
+    "topics": [
+      "AGGREGATION_24H"
+    ],
+    "applicability_notes": "Covered Canadian reporting entities; check entity type, direction, record trigger and exceptions in the cited guidance.",
+    "example_query": "Several related Canadian VC receipts total CAD 11,000 within 24 hours. Which reporting rules apply?",
+    "source_kind": "GUIDANCE",
+    "review_status": "UNVERIFIED",
+    "valid_from": null,
+    "valid_until": null
+  },
+  {
+    "rule_id": "US-OFAC-SANCTIONS-001",
+    "jurisdiction": "US",
+    "regulator": "OFAC",
+    "title": "Virtual currency sanctions scope",
+    "section": "Introduction; Who must comply",
+    "rule_text": "OFAC sanctions also cover virtual currency where U.S. jurisdiction applies. Review the applicable sanctions program and authorizations before determining whether dealings are prohibited.",
+    "source_url": "https://ofac.treasury.gov/system/files/126/virtual_currency_guidance_brochure.pdf",
+    "retrieved_at": "2026-11-14",
+    "topics": [
+      "SANCTIONS"
+    ],
+    "applicability_notes": "Persons and transactions within applicable OFAC jurisdiction; assess program, ownership and authorization.",
+    "example_query": "Does OFAC sanctions compliance apply to a US-linked virtual currency transfer?",
+    "source_kind": "GUIDANCE",
+    "review_status": "UNVERIFIED",
+    "valid_from": null,
+    "valid_until": null
+  },
+  {
+    "rule_id": "US-OFAC-SCREENING-001",
+    "jurisdiction": "US",
+    "regulator": "OFAC",
+    "title": "Risk-based sanctions screening",
+    "section": "Sanctions compliance best practices: sanctions screening",
+    "rule_text": "OFAC recommends risk-based screening controls using available customer and transaction information. Investigate potential matches and relevant restrictions; a similarity score alone is not a confirmed sanctions designation.",
+    "source_url": "https://ofac.treasury.gov/system/files/126/virtual_currency_guidance_brochure.pdf",
+    "retrieved_at": "2026-11-14",
+    "topics": [
+      "SANCTIONS_SCREENING"
+    ],
+    "applicability_notes": "Persons and transactions within applicable OFAC jurisdiction; assess program, ownership and authorization.",
+    "example_query": "A US-linked wallet has a potential sanctions screening match. What needs investigation?",
+    "source_kind": "GUIDANCE",
+    "review_status": "UNVERIFIED",
+    "valid_from": null,
+    "valid_until": null
+  },
+  {
+    "rule_id": "US-OFAC-OWNERSHIP-001",
+    "jurisdiction": "US",
+    "regulator": "OFAC",
+    "title": "Blocked entity ownership",
+    "section": "The SDN List: 50 Percent Rule",
+    "rule_text": "Entities owned 50 percent or more in aggregate, directly or indirectly, by blocked persons can themselves be blocked even without a separate list entry. Ownership analysis is necessary; screening only listed names can miss exposure.",
+    "source_url": "https://ofac.treasury.gov/system/files/126/virtual_currency_guidance_brochure.pdf",
+    "retrieved_at": "2026-11-14",
+    "topics": [
+      "BENEFICIAL_OWNERSHIP"
+    ],
+    "applicability_notes": "Persons and transactions within applicable OFAC jurisdiction; assess program, ownership and authorization.",
+    "example_query": "An unlisted counterparty is partly owned by blocked persons. Which ownership controls apply?",
+    "source_kind": "GUIDANCE",
+    "review_status": "UNVERIFIED",
+    "valid_from": null,
+    "valid_until": null
+  },
+  {
+    "rule_id": "US-FINCEN-SCOPE-001",
+    "jurisdiction": "US",
+    "regulator": "FinCEN",
+    "title": "Convertible virtual currency business classification",
+    "section": "Administrators and Exchangers of Virtual Currency",
+    "rule_text": "Administrators or exchangers accepting and transmitting or buying and selling convertible virtual currency may be money transmitters, subject to limitations or exemptions. A user purchasing goods or services with their own CVC is distinguished from such business activity.",
+    "source_url": "https://www.fincen.gov/resources/statutes-regulations/guidance/application-fincens-regulations-persons-administering",
+    "retrieved_at": "2026-11-14",
+    "topics": [
+      "MSB_CLASSIFICATION"
+    ],
+    "applicability_notes": "Business-model classification under FinCEN guidance; assess exemptions and current requirements.",
+    "example_query": "Does a US convertible virtual currency exchange business fall under money transmitter rules?",
+    "source_kind": "GUIDANCE",
+    "review_status": "UNVERIFIED",
+    "valid_from": null,
+    "valid_until": null
+  }
+]
