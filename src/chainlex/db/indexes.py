@@ -3,6 +3,9 @@
 from pymongo import ASCENDING, IndexModel
 
 COLLECTIONS = (
+    "sepolia_transactions",
+    "sepolia_signer_locks",
+    "transaction_events",
     "entities",
     "regulations",
     "compliance_cases",
@@ -26,6 +29,17 @@ COLLECTIONS = (
 )
 
 INDEXES = {
+    "sepolia_transactions": [
+        IndexModel(
+            [("tenant_id", 1), ("transaction_id", 1)], unique=True, name="tenant_transaction"
+        ),
+        IndexModel(
+            [("chain_id", 1), ("signer", 1), ("nonce", 1)], unique=True, name="signer_nonce"
+        ),
+    ],
+    "transaction_events": [
+        IndexModel([("tenant_id", 1), ("transaction_id", 1)], name="transaction_history"),
+    ],
     "audit_artifacts": [
         IndexModel([("tenant_id", 1), ("artifact_id", 1)], unique=True, name="audit_artifact"),
     ],

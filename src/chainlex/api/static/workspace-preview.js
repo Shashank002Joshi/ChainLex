@@ -26,7 +26,7 @@ const eventTypes = [
 export function previewState(scenario = "corridor_audit") {
   const audit = {
     audit_id: "sample-001", tenant_id: "sample_workspace", revision: 9, scenario, mode: "scripted_demo", state: "AWAITING_HUMAN_REVIEW", initiated_by: "Sample analyst", analysis_digest: "0".repeat(64), created_at: "2026-11-14T16:30:00Z", updated_at: "2026-11-14T16:30:24Z", gates: structuredClone(gates), checkpoint: {
-      context: structuredClone(context), evidence: { regulations: [], memories: [], memory_search_status: "complete", regulation_search_status: "complete", embedding_model: "voyage-finance-2" },
+      context: { ...structuredClone(context), routes: structuredClone(routes) }, evidence: { regulations: [], memories: [], memory_search_status: "complete", regulation_search_status: "complete", embedding_model: "voyage-finance-2" },
       analysis: { recommended_route_id: routes[0].route_id, verdict: "CONDITIONAL", finding: "REVIEW_REQUIRED", explanation: "The configured corridor has fewer unresolved checks. Source applicability and any discovered bank relationships still require human review.", routes: structuredClone(routes), memory_comparison: { behavior_changed: false, without_memory: { recommended_route_id: routes[0].route_id }, with_memory: { recommended_route_id: routes[0].route_id }, interpretation: "No prior memory affected this sample assessment." } },
       draft_receipt: { version: 1, verified: false },
     },

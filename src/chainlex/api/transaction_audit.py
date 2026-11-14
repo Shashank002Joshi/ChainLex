@@ -41,7 +41,13 @@ async def link_audit(db, principal, transaction):
                     "banks": banks,
                 }
             ],
-            "narrative": f"Sepolia settlement request {transaction['settlement_id']} for {transaction['amount']} USDC. Transaction: {explorer}. Beneficiary: {transaction['beneficiary']}. Bank relationships and compliance reasoning remain fictional demo assessments; the on-chain request receipt is real.",
+            "narrative": (
+                f"Sepolia settlement request {transaction['settlement_id']} "
+                f"for {transaction['amount']} USDC. Transaction: {explorer}. "
+                f"Beneficiary: {transaction['beneficiary']}. "
+                "Bank relationships and compliance reasoning remain fictional demo "
+                "assessments; the on-chain request receipt is real."
+            ),
             "transaction_reference": {
                 "tx_hash": transaction["tx_hash"],
                 "settlement_id": transaction["settlement_id"],

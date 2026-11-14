@@ -350,6 +350,28 @@ dialog::backdrop { background: #101a145e; backdrop-filter: blur(3px); }
 @media (prefers-reduced-motion: reduce) {
   *, *:before, *:after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+.agent-summary, .route-note, .text-note, .event-content p, .bank-name, .data-table, .source-list a { font-size: 12px; }
+.gate-description h3 { font-size: 12px; }
+.gate-description p { font-size: 11px; }
+@media (max-width: 600px) {
+  .navigation { flex-wrap: wrap; gap: 3px; }
+  .navigation a { font-size: 11px; flex: 1 0 auto; justify-content: center; }
+  .agents-grid { grid-template-columns: 1fr; gap: 10px; }
+  .agent-card { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 0 14px; padding: 16px; }
+  .agent-topline { display: flex; grid-column: 2; grid-row: 1 / span 3; align-self: center; margin: 0; }
+  .agent-symbol, .agent-card-footer { display: none; }
+  .agent-card h3 { min-height: 0; font-size: 14px; }
+  .agent-subtitle { display: block; font-size: 11px; margin-bottom: 7px; grid-column: 1; }
+  .agent-summary { min-height: 0; font-size: 12px; grid-column: 1; margin: 0; }
+  .agent-card .badge { font-size: 10px; padding: 4px 7px; }
+  .gate-row { flex-wrap: wrap; }
+  .gate-action { margin-left: 27px; }
+  .gate-action .button { min-width: 85px; font-size: 12px; }
+  .case-title h2 { font-size: 15px; }
+  .report-row { flex-wrap: wrap; }
+  .route-note, .text-note, .event-content p { font-size: 12px; }
+  .network-label { font-size: 10px; }
+}
 @media print {
   .sidebar, .topbar, .mode-banner, .heading-actions, .right-column, .page-footer, .gate-action, .transaction-line, dialog, .toast { display: none !important; }
   .app-shell { display: block; } main { padding: 0; max-width: none; }

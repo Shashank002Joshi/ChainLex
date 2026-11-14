@@ -5,10 +5,15 @@ def test_liveness(client):
     assert client.get("/health/live").json() == {"status": "ok", "service": "api"}
 
 
-def test_status_page_is_explicit_about_scaffold(client):
+def test_workspace_labels_preview_and_serves_its_assets(client):
     response = client.get("/")
     assert response.status_code == 200
-    assert "scaffold" in response.text.lower()
+    assert "Preview workspace" in response.text
+    assert "No agents are running" in response.text
+    assert "Create transaction" in response.text
+    assert client.get("/assets/workspace.js").status_code == 200
+    assert client.get("/assets/workspace.css").status_code == 200
+    assert client.get("/assets/mark.svg").status_code == 200
 
 
 def test_readiness_without_database_is_unavailable(client):

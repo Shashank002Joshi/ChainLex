@@ -103,7 +103,10 @@ def encode_request(body, settlement_id):
         [c for _, c in corridor],
         hashlib.sha256(body.model_dump_json().encode()).digest(),
     )
-    signature = "initiateRoutedSettlement(bytes32,address,(uint256,string,uint8,address,string,string[],string[],bytes32))"
+    signature = (
+        "initiateRoutedSettlement(bytes32,address,"
+        "(uint256,string,uint8,address,string,string[],string[],bytes32))"
+    )
     return (
         "0x"
         + (
@@ -139,7 +142,8 @@ class TransactionService:
         except (httpx.HTTPError, ValueError, TypeError) as exc:
             raise HTTPException(
                 502,
-                "Sepolia could not complete this request. Check the backend RPC, signer balance, and contract configuration.",
+                "Sepolia could not complete this request. "
+                "Check the backend RPC, signer balance, and contract configuration.",
             ) from exc
 
     async def require_chain(self):

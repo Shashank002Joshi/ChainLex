@@ -31,11 +31,14 @@ function render(force = false) {
   const key = JSON.stringify([view, state.audit, state.reports, state.events, state.agent, state.preview, state.feedPaused, state.connectionError, state.chainReference, state.transaction, state.transactionConfig]);
   if (!force && key === lastRendered) return;
   lastRendered = key;
+  if (view === "transactions" && $("#transaction-form") && !force) return;
+  const transactionFields = view === "transactions" && $("#transaction-form") ? Object.fromEntries(new FormData($("#transaction-form"))) : null;
   const focusId = document.activeElement?.id;
   const focusAgent = document.activeElement?.dataset.agent;
   const detailsOpen = [...document.querySelectorAll("details[open]")].map(el => el.querySelector("summary")?.textContent);
   const activityScroll = document.querySelector(".activity-list:not(.audit-events)")?.scrollTop || 0;
   $("#workspace-content").innerHTML = view === "reports" ? reportsView(state) : view === "activity" ? activityView(state) : view === "transactions" ? transactionsView(state) : workspaceView(state);
+  if (transactionFields) Object.entries(transactionFields).forEach(([key, value]) => { const field = document.querySelector(`#transaction-form [name="${key}"]`); if (field) field.value = value; });
   document.querySelectorAll("details").forEach(el => { if (detailsOpen.includes(el.querySelector("summary")?.textContent)) el.open = true; });
   const list = document.querySelector(".activity-list:not(.audit-events)"); if (list) list.scrollTop = activityScroll;
   if (focusAgent) document.querySelector(`[data-agent="${focusAgent}"]`)?.focus({ preventScroll: true });
@@ -59,7 +62,7 @@ function bindForm(handler) {
     form.querySelectorAll("button").forEach(b => { b.disabled = true; });
     submit.innerHTML = '<span class="spinner"></span>Working…'; $("#form-error").hidden = true;
     try { await handler(new FormData(form)); }
-    catch (error) { if (error.name !== "AbortError") { $("#form-error").textContent = error.message; $("#form-error").hidden = false; } }
+    catch (error) { if (error.name !== "AbortError") { const field = $("#form-error"); if (field) { field.textContent = error.message; field.hidden = false; } else showError(error); } }
     finally { form.querySelectorAll("button").forEach(b => { b.disabled = false; }); submit.innerHTML = original; }
   });
 }
@@ -110,7 +113,8 @@ async function openAudit(id) {
 async function poll() {
   clearTimeout(pollTimer);
   if (!state.api || !state.audit || state.preview || state.feedPaused || document.hidden) return;
-  const currentGeneration = generation, auditId = state.audit.audit_id, api = state.api;
+  activeController?.abort();
+  const currentGeneration = ++generation, auditId = state.audit.audit_id, api = state.api;
   const controller = new AbortController(); activeController = controller;
   const timeout = setTimeout(() => controller.abort(), 12000);
   try {
@@ -152,7 +156,7 @@ function gateDialog(id) {
       Object.assign(gate, { status: decision === "APPROVE" ? "APPROVED" : "REJECTED", decision_reason: reason, actor_id: "Sample officer", decided_at: new Date().toISOString() });
       audit.revision++;
       state.events.push({ sequence: state.events.length + 1, event_type: "HUMAN_GATE_DECIDED", actor_id: "Sample officer", occurred_at: new Date().toISOString(), payload: { reason } });
-      if (id === "final-signoff") { audit.state = "FINALIZED"; state.reports.push({ version: 2, kind: "REVIEWED_FINAL", sample: true, verified: false, published_at: new Date().toISOString() }); }
+      if (id === "final-signoff") { audit.state = "FINALIZED"; state.reports.push({ version: 2, kind: "REVIEWED_FINAL", sample: true, available: false, verified: false, published_at: new Date().toISOString() }); }
     } else {
       if (form.get("officer")) state.api.officerToken = String(form.get("officer")).trim();
       state.audit = await state.api.request(`/api/audits/${encodeURIComponent(audit.audit_id)}/gates/${encodeURIComponent(id)}/decision`, { method: "POST", officer: true, body: { decision, reason, expected_revision: audit.revision, analysis_digest: audit.analysis_digest } });
@@ -228,6 +232,7 @@ document.addEventListener("click", event => {
   else if (button.dataset.gate) gateDialog(button.dataset.gate);
   else if (button.dataset.download) downloadReport(button.dataset.download);
   else if (button.dataset.action === "reference") referenceDialog();
+  else if (button.dataset.action === "connect") connectDialog();
   else if (button.dataset.action === "export") exportAudit();
   else if (button.dataset.action === "disconnect") disconnect();
   else if (button.dataset.action === "transaction-audit") transactionAudit();
