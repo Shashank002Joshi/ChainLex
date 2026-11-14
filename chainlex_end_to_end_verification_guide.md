@@ -243,3 +243,4 @@ PYTHONPATH=src .venv/bin/pytest tests/test_e2e_compliance_runner.py -v
 - **153 passing automated tests**, 3 skipped (only for offline Atlas mock integration).
 - **0 errors** on `ruff check .`
 - **0 formatting discrepancies** on `ruff format`.
+

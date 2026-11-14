@@ -30,7 +30,7 @@
       </div>
     </aside>
     <div class="main-shell">
-      <header class="topbar"><div class="breadcrumb">Workspace<span>/</span><strong id="breadcrumb-page">Audit workspace</strong></div><div class="topbar-actions"><span class="network-label"><span class="network-diamond"></span>Ethereum Sepolia</span><span class="topbar-divider"></span><button id="theme-toggle" class="icon-button" aria-label="Switch to dark theme" title="Switch theme"><span data-icon="moon"></span></button></div></header>
+      <header class="topbar"><div class="breadcrumb">Workspace<span>/</span><strong id="breadcrumb-page">Audit workspace</strong></div><div class="topbar-actions"><button id="demo-sim-btn" class="button demo-topbar-btn" title="Run 1-Minute Automated Demo &amp; Voiceover Teleprompter"><span data-icon="play"></span>🎬 1-Min Demo</button><span class="network-label"><span class="network-diamond"></span>Ethereum Sepolia</span><span class="topbar-divider"></span><button id="theme-toggle" class="icon-button" aria-label="Switch to dark theme" title="Switch theme"><span data-icon="moon"></span></button></div></header>
       <main id="main" tabindex="-1">
         <div id="mode-banner" class="mode-banner"><span><span class="preview-dot"></span><strong>Preview workspace</strong><span class="banner-detail">Sample data to explore the experience. No agents are running.</span></span><button id="connect-banner" class="text-button">Connect workspace <span data-icon="arrow"></span></button></div>
         <div id="error-banner" class="error-banner" role="alert" hidden></div>
@@ -43,6 +43,25 @@
   <dialog id="action-dialog" aria-labelledby="dialog-title"><div class="dialog-header"><div><div id="dialog-eyebrow" class="eyebrow">WORKSPACE</div><h2 id="dialog-title"></h2></div><button type="button" id="close-dialog" class="icon-button" aria-label="Close dialog"><span data-icon="close"></span></button></div><div id="dialog-content"></div></dialog>
   <div id="toast" role="status" class="toast" hidden></div>
   <div id="announcements" class="sr-only" role="status" aria-live="polite"></div>
+
+  <!-- 1-Minute Live Voiceover Teleprompter & Simulator -->
+  <div id="demo-teleprompter" class="demo-teleprompter" hidden>
+    <div class="demo-teleprompter-content">
+      <div class="demo-teleprompter-controls">
+        <button id="demo-play-btn" class="demo-ctrl-btn" type="button" title="Pause / Resume">⏸️ Pause</button>
+        <button id="demo-stop-btn" class="demo-ctrl-btn" type="button" title="Exit Simulator">⏹️ Close</button>
+        <div class="demo-timer"><span id="demo-time-elapsed">0:00</span> / 1:00</div>
+      </div>
+      <div class="demo-teleprompter-body">
+        <div class="demo-phase-tag" id="demo-phase-tag">PHASE 1 · CORRIDOR SETUP</div>
+        <div class="demo-voiceover-text" id="demo-voiceover-text">Welcome to ChainLex...</div>
+      </div>
+    </div>
+    <div class="demo-progress-track">
+      <div class="demo-progress-bar" id="demo-progress-bar"></div>
+    </div>
+  </div>
+
   <noscript><p class="noscript">Enable JavaScript to inspect agents and reports. The API remains available at <a href="/docs">/docs</a>.</p></noscript>
 </body>
 </html>

@@ -39,7 +39,9 @@ def evaluate_route_admission(
             )
             continue
         allowed = any(
-            entry.wallet == authenticated_originator for entry in policy.allowed_originators
+            entry.wallet.network == authenticated_originator.network
+            and entry.wallet.address.lower() == authenticated_originator.address.lower()
+            for entry in policy.allowed_originators
         )
         checks.append(
             {

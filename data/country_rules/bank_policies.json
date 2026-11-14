@@ -17,6 +17,13 @@
       {
         "wallet": {
           "network": "ethereum-sepolia",
+          "address": "0xbcfe83238c0f3e11aca5de16fa697b6fa55070ba"
+        },
+        "label": "ChainLex Sepolia Operator Treasury Key"
+      },
+      {
+        "wallet": {
+          "network": "ethereum-sepolia",
           "address": "0x2222222222222222222222222222222222222222"
         },
         "label": "Binance demo identity — fictional address, not an actual Binance wallet"
@@ -43,6 +50,13 @@
       {
         "wallet": {
           "network": "ethereum-sepolia",
+          "address": "0xbcfe83238c0f3e11aca5de16fa697b6fa55070ba"
+        },
+        "label": "ChainLex Sepolia Operator Treasury Key"
+      },
+      {
+        "wallet": {
+          "network": "ethereum-sepolia",
           "address": "0x2222222222222222222222222222222222222222"
         },
         "label": "Binance demo identity — fictional address, not an actual Binance wallet"
@@ -65,6 +79,13 @@
           "address": "0x1111111111111111111111111111111111111111"
         },
         "label": "Wealthsimple demo identity — fictional address, not an actual Wealthsimple wallet"
+      },
+      {
+        "wallet": {
+          "network": "ethereum-sepolia",
+          "address": "0xbcfe83238c0f3e11aca5de16fa697b6fa55070ba"
+        },
+        "label": "ChainLex Sepolia Operator Treasury Key"
       },
       {
         "wallet": {
