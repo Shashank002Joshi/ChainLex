@@ -25,7 +25,8 @@ function render(force = false) {
   const view = viewName();
   const [title, description] = titles[view];
   $("#page-title").textContent = title; $("#page-description").textContent = description; $("#breadcrumb-page").textContent = title;
-  $("#audit-short-id").textContent = state.audit?.audit_id || "NEW SESSION";
+  $("#audit-short-id").textContent = view === "transactions" ? "NEW REQUEST" : state.audit?.audit_id || "NEW SESSION";
+  document.querySelector(".heading-actions").hidden = view === "transactions";
   $("#report-count").textContent = state.reports.length;
   $("#footer-state").textContent = state.preview ? "Scripted demo · Preview data" : state.connectionError ? "Connection interrupted · Retrying" : "Scripted reasoning · Connected API";
   document.querySelectorAll("[data-nav]").forEach(link => { if (link.dataset.nav === view) link.setAttribute("aria-current", "page"); else link.removeAttribute("aria-current"); });
@@ -74,6 +75,7 @@ function connectDialog() {
     const scenarios = await api.request("/api/audits/scenarios");
     if (!scenarios.scenarios || typeof scenarios.scenarios !== "object") throw new Error("The backend returned an unsupported audit contract.");
     resetRequest(); state.api = api; state.scenarios = scenarios.scenarios; state.preview = false;
+    state.transaction = null; state.transactionConfig = null; state.verification = null; state.chainReference = null;
     state.audit = null; state.events = []; state.reports = []; state.lastSynced = null; state.connectionError = false; state.feedPaused = false;
     $("#mode-banner").innerHTML = `<span><span class="live-dot"></span><strong>Connected workspace</strong><span class="banner-detail">Scripted agents · Real workflow events and saved reports</span></span><button id="connect-banner" class="text-button">Connection settings ${icon("arrow")}</button>`;
     $("#connection-label").innerHTML = "Connected workspace<small>Credentials held in this tab</small>";
@@ -84,7 +86,7 @@ function connectDialog() {
 }
 function disconnect() {
   resetRequest(); clearTimeout(transactionTimer); state.api = null; state.preview = true;
-  Object.assign(state, previewState(), { transaction: null, transactionConfig: null, chainReference: null, connectionError: false });
+  Object.assign(state, previewState(), { transaction: null, transactionConfig: null, verification: null, chainReference: null, connectionError: false });
   saveUrl(null); closeDialog(); clearError();
   $("#mode-banner").innerHTML = `<span><span class="preview-dot"></span><strong>Preview workspace</strong><span class="banner-detail">Sample data to explore the experience. No agents are running.</span></span><button id="connect-banner" class="text-button">Connect workspace ${icon("arrow")}</button>`;
   $("#connection-label").innerHTML = "Preview workspace<small>Connect to your audit API</small>";
