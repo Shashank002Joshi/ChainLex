@@ -27,7 +27,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--scenario",
-        choices=["cross_country", "binance_hack", "multihop_routing", "custom"],
+        choices=[
+            "cross_country",
+            "binance_hack",
+            "multihop_routing",
+            "sanctions_blocked",
+            "custom",
+        ],
         default="custom",
         help="Select a scenario preset or custom parameterization",
     )
@@ -196,6 +202,18 @@ def apply_scenario_defaults(args: argparse.Namespace) -> None:
         args.dest_bank = "dbs"
         args.dest_country = "SG"
         args.strict_intermediary = True
+
+    elif args.scenario == "sanctions_blocked":
+        args.origin_bank = "scotiabank"
+        args.origin_country = "CA"
+        args.inter_banks = ["jpmorgan_chase"]
+        args.inter_countries = ["US"]
+        args.dest_bank = "dbs"
+        args.dest_country = "SG"
+        args.amount = 1250000.0
+        args.sanctions_clear = False
+        args.cdd_complete = True
+        args.travel_rule_complete = True
 
 
 def main() -> None:

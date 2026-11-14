@@ -161,7 +161,14 @@ class DefenseCounselAgent:
                 "All corridor correspondent banks verified originator institutional identity"
             )
 
-        if admission_result.get("outcome") == "DENY":
+        if case.sanctions_clear is False:
+            advocated = "DENY"
+            reasoning = (
+                "Defense concedes: Absolute statutory bar. Counterparty matched sanctions "
+                "database. No safe harbor or statutory exemption exists for sanctioned entities."
+            )
+            confidence = 0.99
+        elif admission_result.get("outcome") == "DENY":
             advocated = "REVIEW"
             reasoning = (
                 "Defense acknowledges admission gate failure, but argues this may represent "
