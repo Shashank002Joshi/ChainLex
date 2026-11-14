@@ -463,7 +463,7 @@ async def run_e2e_verification(
             ref = await connector.dispatch(prepared)
             leg5_report["state_transitions"].append("SUBMITTING -> SUBMITTED -> VERIFYING_EFFECT")
             leg5_report["tx_hash"] = ref.tx_hash
-            explorer_url = connector.get_explorer_url(ref.tx_hash)
+            explorer_url = connector.get_explorer_url(ref.tx_hash) if mode == "sepolia" else None
             leg5_report["explorer_url"] = explorer_url
 
             if verbose:
@@ -492,14 +492,11 @@ async def run_e2e_verification(
                 if verbose:
                     print(f"  [!] Probe outcome: {probe_outcome}")
         except Exception as exc:
-            # Fallback to verified on-chain proof if Sepolia RPC is unreachable/rate-limited
-            fallback_tx = "0xf5de4971392bc7ec1ce5729c5678ebd8e91c5d32948325bf091a4f52cb099de6"
-            leg5_report["state_transitions"].append("SUBMITTING -> SUBMITTED -> EFFECT_CONFIRMED")
-            leg5_report["status"] = "CONFIRMED"
-            leg5_report["tx_hash"] = fallback_tx
-            leg5_report["explorer_url"] = f"https://sepolia.etherscan.io/tx/{fallback_tx}"
-            leg5_report["effect"] = f"isSettlementHeld({settlement.settlement_id[:10]}...) == true"
-            leg5_report["notice"] = f"Live Sepolia broadcast completed (RPC fallback: {exc})"
+            leg5_report["status"] = "FAILED"
+            leg5_report["error"] = str(exc)
+            leg5_report["notice"] = (
+                "Hold execution could not be confirmed. No fallback proof is used."
+            )
 
     else:
         leg5_report["state_transitions"].append(

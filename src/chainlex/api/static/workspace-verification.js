@@ -15,7 +15,10 @@ export function verificationView(result) {
   const isBlocked = result.overall_status === "BLOCK" || court?.cco_determination?.action_ordered === "PROTECTIVE_HOLD";
 
   let onchainBanner = "";
-  if (isBlocked && leg5?.tx_hash) {
+  if (leg5?.status === "FAILED") {
+    onchainBanner = `<div class="onchain-action-banner block"><h3>Dispatch failed</h3><p>${esc(leg5.error || "Execution could not be confirmed.")}</p><p>No successful on-chain effect is claimed.</p></div>`;
+  }
+  if (isBlocked && result.mode === "sepolia" && leg5?.status === "CONFIRMED" && /^0x[0-9a-fA-F]{64}$/.test(leg5?.tx_hash || "")) {
     onchainBanner = `
       <div class="onchain-action-banner block">
         <div class="onchain-banner-head">
@@ -27,7 +30,7 @@ export function verificationView(result) {
           <br><strong>Status:</strong> ${esc(leg5.status || "CONFIRMED")}
           ${leg5.effect ? `<br><strong>Contract State:</strong> <code>${esc(leg5.effect)}</code>` : ""}
         </p>
-        <a href="${esc(leg5.explorer_url || `https://sepolia.etherscan.io/tx/${leg5.tx_hash}`)}" target="_blank" rel="noopener noreferrer" class="onchain-explorer-btn danger">
+        <a href="https://sepolia.etherscan.io/tx/${esc(leg5.tx_hash)}" target="_blank" rel="noopener noreferrer" class="onchain-explorer-btn danger">
           ${icon("external")} View Sepolia Hold on Etherscan (${leg5.tx_hash.slice(0, 10)}…)
         </a>
       </div>

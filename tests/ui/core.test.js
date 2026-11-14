@@ -1,6 +1,19 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { esc, safeUrl, sepoliaReference, WorkspaceApi } from "../../src/chainlex/api/static/workspace-core.js";
+import { verificationView } from "../../src/chainlex/api/static/workspace-verification.js";
+
+test("simulated or failed dispatch cannot display a confirmed explorer link", () => {
+  const dispatch = { status: "CONFIRMED", tx_hash: "0x" + "ab".repeat(32) };
+  for (const result of [
+    { mode: "simulated", overall_status: "BLOCK", legs: { leg_5_dispatch: dispatch } },
+    { mode: "sepolia", overall_status: "BLOCK", legs: { leg_5_dispatch: { ...dispatch, status: "FAILED", error: "RPC unavailable" } } },
+  ]) {
+    const html = verificationView(result);
+    assert.equal(html.includes('href="https://sepolia.etherscan.io/tx/'), false);
+    assert.equal(html.includes("Protective On-Chain Hold Dispatched"), false);
+  }
+});
 
 test("only Sepolia explorer references produce transaction links", () => {
   const hash = "0x" + "ab".repeat(32);
@@ -22,5 +35,13 @@ test("API mutations use the officer credential and structured JSON", async () =>
     await new WorkspaceApi("analyst", "officer").request("/api/transactions", { method: "POST", officer: true, body: { amount: "1.000001" } });
     assert.equal(call.options.headers.Authorization, "Bearer officer");
     assert.deepEqual(JSON.parse(call.options.body), { amount: "1.000001" });
+  } finally { globalThis.fetch = original; }
+});
+
+test("API validation errors identify the invalid transaction field", async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({ detail: [{ loc: ["body", "amount"], msg: "Amount must be positive" }] }), { status: 422 });
+  try {
+    await assert.rejects(new WorkspaceApi("analyst", "officer").request("/api/transactions"), /amount: Amount must be positive/);
   } finally { globalThis.fetch = original; }
 });

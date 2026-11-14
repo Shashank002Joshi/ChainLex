@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7f8f5">
-  <meta name="description" content="Agent outputs, governed evidence, human review, and audit reports in one ChainLex workspace.">
-  <title>ChainLex — Audit workspace</title>
+  <meta name="description" content="Create Sepolia settlement requests and follow execution logs.">
+  <title>ChainLex — Transactions</title>
   <link rel="icon" href="/assets/mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/assets/workspace.css">
   <script type="module" src="/assets/workspace.js"></script>
@@ -14,14 +14,12 @@
   <a class="skip-link" href="#main">Skip to workspace</a>
   <div class="app-shell">
     <aside class="sidebar" aria-label="Workspace navigation">
-      <a class="brand" href="#workspace" aria-label="ChainLex workspace"><img src="/assets/mark.svg" width="30" height="30" alt=""><span>chainlex<span class="brand-period">.</span></span></a>
+      <a class="brand" href="#transactions" aria-label="ChainLex workspace"><img src="/assets/mark.svg" width="30" height="30" alt=""><span>chainlex<span class="brand-period">.</span></span></a>
       <div class="workspace-label"><span class="workspace-avatar">C</span><span>Compliance workspace<small>Settlement intelligence</small></span></div>
       <p class="nav-heading">WORKSPACE</p>
       <nav class="navigation">
-        <a href="#workspace" data-nav="workspace"><span data-icon="layers"></span>Audit workspace</a>
         <a href="#transactions" data-nav="transactions"><span data-icon="send"></span>Create transaction</a>
-        <a href="#reports" data-nav="reports"><span data-icon="file"></span>Reports<span id="report-count" class="nav-count">1</span></a>
-        <a href="#activity" data-nav="activity"><span data-icon="activity"></span>Activity</a>
+        <a href="#logs" data-nav="logs"><span data-icon="activity"></span>Logs</a>
       </nav>
       <div class="sidebar-note"><span class="tiny-rule"></span><p>Three agents.<br>One traceable audit.</p></div>
       <div class="sidebar-bottom">
@@ -30,37 +28,19 @@
       </div>
     </aside>
     <div class="main-shell">
-      <header class="topbar"><div class="breadcrumb">Workspace<span>/</span><strong id="breadcrumb-page">Audit workspace</strong></div><div class="topbar-actions"><button id="demo-sim-btn" class="button demo-topbar-btn" title="Run 1-Minute Automated Demo &amp; Voiceover Teleprompter"><span data-icon="play"></span>🎬 1-Min Demo</button><span class="network-label"><span class="network-diamond"></span>Ethereum Sepolia</span><span class="topbar-divider"></span><button id="theme-toggle" class="icon-button" aria-label="Switch to dark theme" title="Switch theme"><span data-icon="moon"></span></button></div></header>
+      <header class="topbar"><div class="breadcrumb">Workspace<span>/</span><strong id="breadcrumb-page">Create transaction</strong></div><div class="topbar-actions"><span class="network-label"><span class="network-diamond"></span>Ethereum Sepolia</span><span class="topbar-divider"></span><button id="theme-toggle" class="icon-button" aria-label="Switch to dark theme" title="Switch theme"><span data-icon="moon"></span></button></div></header>
       <main id="main" tabindex="-1">
         <div id="mode-banner" class="mode-banner"><span><span class="preview-dot"></span><strong>Preview workspace</strong><span class="banner-detail">Sample data to explore the experience. No agents are running.</span></span><button id="connect-banner" class="text-button">Connect workspace <span data-icon="arrow"></span></button></div>
         <div id="error-banner" class="error-banner" role="alert" hidden></div>
-        <section class="page-heading"><div><div class="eyebrow">COMPLIANCE / <span id="audit-short-id">SAMPLE-001</span></div><h1 id="page-title">Audit workspace</h1><p id="page-description">A clear view of every agent, decision, and outcome.</p></div><div class="heading-actions"><button id="open-audit" class="button button-secondary"><span data-icon="search"></span>Open audit</button><button id="new-audit" class="button button-primary"><span data-icon="plus"></span>New audit</button></div></section>
+        <section class="page-heading"><div><div class="eyebrow">COMPLIANCE / <span id="audit-short-id">SAMPLE-001</span></div><h1 id="page-title">Create transaction</h1><p id="page-description">Create a settlement request and follow its execution.</p></div><div class="heading-actions"><button id="open-audit" class="button button-secondary"><span data-icon="search"></span>Open audit</button></div></section>
         <div id="workspace-content"></div>
-        <footer class="page-footer"><span><span class="footer-mark"></span>ChainLex <span class="footer-separator">/</span> Context. Control. Completion.</span><span id="footer-state">Scripted demo · Preview data</span></footer>
+        <footer class="page-footer"><span><span class="footer-mark"></span>ChainLex <span class="footer-separator">/</span> Context. Control. Completion.</span><span id="footer-state">Preview workspace</span></footer>
       </main>
     </div>
   </div>
   <dialog id="action-dialog" aria-labelledby="dialog-title"><div class="dialog-header"><div><div id="dialog-eyebrow" class="eyebrow">WORKSPACE</div><h2 id="dialog-title"></h2></div><button type="button" id="close-dialog" class="icon-button" aria-label="Close dialog"><span data-icon="close"></span></button></div><div id="dialog-content"></div></dialog>
   <div id="toast" role="status" class="toast" hidden></div>
   <div id="announcements" class="sr-only" role="status" aria-live="polite"></div>
-
-  <!-- 1-Minute Live Voiceover Teleprompter & Simulator -->
-  <div id="demo-teleprompter" class="demo-teleprompter" hidden>
-    <div class="demo-teleprompter-content">
-      <div class="demo-teleprompter-controls">
-        <button id="demo-play-btn" class="demo-ctrl-btn" type="button" title="Pause / Resume">⏸️ Pause</button>
-        <button id="demo-stop-btn" class="demo-ctrl-btn" type="button" title="Exit Simulator">⏹️ Close</button>
-        <div class="demo-timer"><span id="demo-time-elapsed">0:00</span> / 1:00</div>
-      </div>
-      <div class="demo-teleprompter-body">
-        <div class="demo-phase-tag" id="demo-phase-tag">PHASE 1 · CORRIDOR SETUP</div>
-        <div class="demo-voiceover-text" id="demo-voiceover-text">Welcome to ChainLex...</div>
-      </div>
-    </div>
-    <div class="demo-progress-track">
-      <div class="demo-progress-bar" id="demo-progress-bar"></div>
-    </div>
-  </div>
 
   <noscript><p class="noscript">Enable JavaScript to inspect agents and reports. The API remains available at <a href="/docs">/docs</a>.</p></noscript>
 </body>

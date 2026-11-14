@@ -76,6 +76,7 @@ def public_transaction(record):
         "settlement_id",
         "state",
         "tx_hash",
+        "submission_error",
         "amount",
         "beneficiary",
         "asset_contract",
@@ -136,7 +137,11 @@ class TransactionService:
                 )
                 response.raise_for_status()
                 data = response.json()
-            if data.get("error") or "result" not in data:
+            if data.get("error"):
+                error = data["error"]
+                message = str(error.get("message", "RPC rejected request"))[:300]
+                raise HTTPException(502, f"Sepolia {method} rejected the request: {message}")
+            if "result" not in data:
                 raise ValueError("RPC rejected request")
             return data["result"]
         except (httpx.HTTPError, ValueError, TypeError) as exc:
@@ -310,6 +315,7 @@ class TransactionService:
         return await self.broadcast(record)
 
     async def broadcast(self, record):
+        submission_error = None
         try:
             result = await self.rpc("eth_sendRawTransaction", [record["signed_raw_tx"]])
             new_state = (
@@ -317,11 +323,20 @@ class TransactionService:
                 if str(result).lower() == record["tx_hash"].lower()
                 else "SUBMISSION_UNKNOWN"
             )
-        except HTTPException:
+            if new_state == "SUBMISSION_UNKNOWN":
+                submission_error = "RPC returned an unexpected hash; broadcast is not confirmed."
+        except HTTPException as exc:
             new_state = "SUBMISSION_UNKNOWN"
+            submission_error = str(exc.detail)
         await self.db.sepolia_transactions.update_one(
             {"_id": record["_id"], "state": {"$in": ["PREPARED", "SUBMISSION_UNKNOWN"]}},
-            {"$set": {"state": new_state, "updated_at": datetime.now(UTC)}},
+            {
+                "$set": {
+                    "state": new_state,
+                    "submission_error": submission_error,
+                    "updated_at": datetime.now(UTC),
+                }
+            },
         )
         return await self.get(record["tenant_id"], record["transaction_id"])
 
@@ -350,6 +365,13 @@ class TransactionService:
             if success
             else "REVERTED",
             "block_number": int(receipt["blockNumber"], 16),
+            "submission_error": None
+            if success and matches
+            else (
+                "The transaction succeeded, but its receipt has no matching settlement event."
+                if success
+                else "The transaction reverted on-chain."
+            ),
             "updated_at": datetime.now(UTC),
         }
         await self.db.sepolia_transactions.update_one({"_id": record["_id"]}, {"$set": updates})

@@ -20,6 +20,24 @@ from chainlex.services.e2e_runner import run_e2e_verification
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("mode", ["simulated", "sepolia"])
+async def test_dispatch_failure_never_substitutes_a_successful_transaction(monkeypatch, mode):
+    async def fail_prepare(*args, **kwargs):
+        raise RuntimeError("RPC unavailable")
+
+    monkeypatch.setattr("chainlex.services.e2e_runner.EVMConnector.prepare", fail_prepare)
+    report = await run_e2e_verification(
+        scenario="sanctions_blocked", sanctions_clear=False, mode=mode, verbose=False
+    )
+    dispatch = report["legs"]["leg_5_dispatch"]
+    assert dispatch["status"] == "FAILED"
+    assert dispatch["error"] == "RPC unavailable"
+    assert "tx_hash" not in dispatch
+    assert "explorer_url" not in dispatch
+    assert "effect" not in dispatch
+
+
+@pytest.mark.asyncio
 async def test_e2e_cross_country_case_triggers_prosecutor_and_hold():
     """Case 1: Missing Travel Rule triggers Prosecutor charge and CCO protective hold."""
     report = await run_e2e_verification(

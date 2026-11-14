@@ -3,6 +3,7 @@
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
+import httpx
 import pytest
 from eth_abi import decode
 from eth_account import Account
@@ -164,6 +165,28 @@ async def test_timeout_preserves_unknown_outcome_and_same_signed_identity():
     engine.rpc.assert_awaited_once_with("eth_sendRawTransaction", ["private-signed-bytes"])
     assert db.sepolia_transactions.update_one.await_args.args[1]["$set"]["state"] == (
         "SUBMISSION_UNKNOWN"
+    )
+    assert (
+        db.sepolia_transactions.update_one.await_args.args[1]["$set"]["submission_error"]
+        == "Timeout"
+    )
+
+
+async def test_rpc_rejection_preserves_specific_reason_without_returning_signed_material():
+    def respond(request):
+        return httpx.Response(
+            200, json={"error": {"code": -32000, "message": "insufficient funds for gas"}}
+        )
+
+    engine = TransactionService(
+        None, Settings(_env_file=None), transport=httpx.MockTransport(respond)
+    )
+    with pytest.raises(HTTPException) as caught:
+        await engine.rpc("eth_estimateGas", [])
+    assert caught.value.status_code == 502
+    assert (
+        caught.value.detail
+        == "Sepolia eth_estimateGas rejected the request: insufficient funds for gas"
     )
 
 

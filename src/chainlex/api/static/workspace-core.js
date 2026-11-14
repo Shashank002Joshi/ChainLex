@@ -51,15 +51,20 @@ export function sepoliaReference(value) {
 }
 export class ApiError extends Error { constructor(message, status) { super(message); this.status = status; } }
 export class WorkspaceApi {
-  constructor(token, officerToken = "") { this.token = token; this.officerToken = officerToken; }
+  constructor(token, officerToken = "", onEvent = () => {}) { this.token = token; this.officerToken = officerToken; this.onEvent = onEvent; }
   async request(path, { method = "GET", body, signal, officer = false, blob = false } = {}) {
     let response;
     try {
       response = await fetch(path, { method, signal, headers: { Authorization: `Bearer ${officer ? this.officerToken || this.token : this.token}`, ...(body ? { "Content-Type": "application/json" } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
-    } catch (error) { if (error.name === "AbortError") throw error; throw new ApiError("Connection lost. Check that the API is running, then retry.", 0); }
+    } catch (error) { if (error.name === "AbortError") throw error; this.onEvent("error", `${method} ${path.split("?")[0]} · ${error.name === "TimeoutError" ? "Request timed out" : "Connection lost"}`); throw new ApiError(error.name === "TimeoutError" ? "The request timed out. Broadcast status is unknown; retry the same request to check it without creating a duplicate." : "Connection lost. Check that the API is running, then retry the same request to avoid duplicates.", 0); }
+    this.onEvent(response.ok ? "info" : "error", `${method} ${path.split("?")[0]} · HTTP ${response.status}`);
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
       const detail = data.detail;
+      if (Array.isArray(detail)) {
+        const fields = detail.map(item => `${(item.loc || []).filter(part => part !== "body").join(".") || "Request"}: ${item.msg || "Invalid value"}`).join("; ");
+        throw new ApiError(fields || "Invalid transaction fields.", response.status);
+      }
       const messages = { 401: "The access token was not accepted. Reconnect with a valid token.", 403: "This action requires an authorized officer token.", 404: "This audit or API endpoint is unavailable. Check the audit ID and backend version.", 409: "The audit changed while you were reviewing it. Refresh and review the latest version.", 503: "A required service is unavailable. Check the API and database, then retry." };
       throw new ApiError(typeof detail?.message === "string" ? detail.message : typeof detail === "string" ? detail : messages[response.status] || "The request could not be completed. Please retry.", response.status);
     }
