@@ -54,6 +54,25 @@ contract SettlementHubTest {
         require(!ok, "Mismatched route accepted");
     }
 
+    function testRejectSelfSettlement() public {
+        SettlementHub hub = new SettlementHub();
+        SettlementHub.SettlementDetails memory d = details();
+        (bool ok,) = address(hub).call(abi.encodeCall(
+            hub.initiateRoutedSettlement, (bytes32(uint256(1)), address(this), d)
+        ));
+        require(!ok, "Self-settlement accepted");
+    }
+
+    function testRejectZeroInstructionsHash() public {
+        SettlementHub hub = new SettlementHub();
+        SettlementHub.SettlementDetails memory d = details();
+        d.instructionsHash = bytes32(0);
+        (bool ok,) = address(hub).call(abi.encodeCall(
+            hub.initiateRoutedSettlement, (bytes32(uint256(1)), address(0x2222), d)
+        ));
+        require(!ok, "Zero instructions hash accepted");
+    }
+
     function testLegacyInitiationStillAvailable() public {
         SettlementHub hub = new SettlementHub();
         hub.initiateSettlement(bytes32(uint256(2)), address(0x2222), 100, "USD");

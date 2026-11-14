@@ -106,6 +106,8 @@ contract SettlementHub {
         if (settlementId == bytes32(0)) revert InvalidSettlementId();
         require(!routedSettlementExists[settlementId], "Duplicate settlement");
         require(beneficiary != address(0), "Missing beneficiary");
+        require(beneficiary != msg.sender, "Self-settlement prohibited");
+        require(details.instructionsHash != bytes32(0), "Missing instructions hash");
         require(details.amountAtomic > 0, "Amount must be positive");
         require(details.assetDecimals <= 18, "Unsupported decimals");
         bytes memory symbol = bytes(details.assetSymbol);
