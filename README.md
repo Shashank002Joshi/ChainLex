@@ -5,9 +5,10 @@ Project scaffold for a governed, auditable settlement-compliance agent. The appr
 ## Current capabilities
 
 - Installable Python 3.12 package with separate API, worker, and simulator commands.
-- Validated settings, tenant-bound demo authentication, typed workflow/action contracts, and connector protocol.
+- Validated settings, tenant-bound demo authentication, typed six-leg FSM/event/action contracts, and connector protocol.
 - API liveness/readiness, OpenAPI route contracts, and an explicit scaffold status page.
 - Persistent MongoDB-backed simulator operations with idempotency and delayed verification.
+- EVM connector, chain indexer, event-bus, audit-pinning, and semantic-search modules with mocked-RPC tests; these are not yet wired into the compliance FSM worker.
 - MongoDB collection/index bootstrap, replica-set preflight, and clearly labelled demo fixtures.
 - Unit/HTTP tests, opt-in MongoDB integration tests, linting, package-build checks, and CI.
 
@@ -15,14 +16,16 @@ The worker is an idle scaffold, not an executing compliance agent. Workflow rout
 
 ## Quick start
 
+For the complete manual walkthrough, expected HTTP responses, restart test, and MongoDB queries, see [Manual testing](docs/manual-testing.md). It uses a separate `chainlex_manual_fsm` database and distinguishes working simulator persistence from the FSM handlers that are still scaffolded.
+
 Install [uv](https://docs.astral.sh/uv/) and Python 3.12, then run from the repository root:
 
 ```sh
 uv sync --locked --group dev
-cp .env.example .env
+cp -n .env.example .env
 ```
 
-Set three distinct tokens in `.env`. Start the processes in separate terminals:
+The copy command preserves an existing `.env`. Set three distinct tokens in `.env`. Start the processes in separate terminals:
 
 ```sh
 uv run chainlex-api --port 8000
@@ -38,7 +41,37 @@ For a bounded worker startup check:
 uv run chainlex-worker --once
 ```
 
-Without a reachable replica set this exits nonzero and reports a configuration/database error. With a reachable database it logs an idle scaffold cycle and exits successfully; it does not process jobs.
+Without a reachable replica set this exits nonzero and reports a configuration/database error. With a reachable database it logs an idle scaffold cycle and exits successfully; it does not advance compliance FSMs.
+
+## Inspect the six-leg FSM
+
+The canonical sequence is **intake → evidence → analysis → authorization → dispatch → verification**. The full [FSM design](docs/superpowers/specs/2026-11-14-compliance-fsm-design.md) specifies guards, saved outputs, retries, and crash recovery for each substep.
+
+With the API running, inspect its static definition without creating an FSM or sending a hold:
+
+```sh
+uv run python - <<'PYCODE'
+import httpx
+from chainlex.config import Settings
+settings = Settings()
+response = httpx.get(
+    "http://127.0.0.1:8000/api/fsms/definition",
+    headers={"Authorization": f"Bearer {settings.analyst_token.get_secret_value()}"},
+)
+response.raise_for_status()
+contract = response.json()
+for leg, states in contract["legs"].items():
+    print(leg, "→".join(states))
+print("SUBMITTING recovery:", contract["states"]["SUBMITTING"]["recovery"])
+print("Runtime implemented:", contract["runtime_implemented"])
+PYCODE
+```
+
+The response lists each transition's event, actor source, guards, and required writes. A declared edge is not authorization: `guards_evaluated` and `runtime_implemented` are both false. Shared waits derive their leg from a validated saved checkpoint; retries cannot resume an arbitrary submission.
+
+The instance route contracts are now `POST /api/fsms`, `GET /api/fsms/{fsm_id}`, and its `/events` and `/export` subpaths. They return 501. The original `/api/jobs` scaffold routes have been replaced. Governance routes retain their existing roles.
+
+New bootstrap definitions use `compliance_fsms`, `fsm_id` references, and `tenant_controls`. Existing `job_executions` records are not deleted or migrated. If old proposal/audit unique indexes reference `job_id`, bootstrap stops before changing collections; those indexes need a separately reviewed migration. Restart running services after updating the code.
 
 ## Local MongoDB
 
@@ -64,9 +97,24 @@ uv run chainlex-db bootstrap
 uv run chainlex-db seed-demo
 ```
 
-`preflight` checks replica-set/sharded topology and commits a disposable database transaction. `bootstrap` is repeatable. `seed-demo` creates six fictional entities and four unreviewed historical fixtures across two tenants without overwriting later edits. These fixtures are not eligible to authorize a compliance action.
+`preflight` checks replica-set/sharded topology and commits a disposable database transaction. `bootstrap` is repeatable. `seed-demo` retains the six fictional entities and four historical fixtures, and adds the current corpus's 12 review policies and three bank-admission policies for `CHAINLEX_DEMO_TENANT_ID`. New policies are inactive and UNVERIFIED. Tenant-owned demo bank policies are bound to that configured tenant; bank IDs do not grant access to another tenant's private data.
 
-Plain local MongoDB does not provide the Atlas Vector Search service used by this project. Use Atlas for retrieval work; vector-index definitions live in `src/chainlex/db/vector_indexes.json`. No regulatory corpus or embeddings are fabricated by the scaffold.
+Regulations require real Voyage embeddings before insertion. With `CHAINLEX_VOYAGE_API_KEY` configured, the same command embeds missing content versions using `voyage-finance-2` and stores validated 1,024-dimensional vectors for the 12 source-linked summaries. Without a key, policies still seed and the JSON result reports `regulations.status: skipped` with a missing-key reason; it writes no placeholder regulation records or vectors. Policies are seeded before the embedding request, so a provider failure does not block their insertion. `CHAINLEX_EMBEDDING_ENDPOINT` defaults to `https://ai.mongodb.com/v1/embeddings` for Atlas model keys; set it to `https://api.voyageai.com/v1/embeddings` for Voyage platform keys. The explicit country ingestion CLI also supports its existing `--endpoint` override.
+
+The result reports inserted versus preserved policy/regulation counts. Repeated runs preserve existing records and officer decisions. Changed regulation text creates a new hash-versioned record; a changed policy needs a new explicit policy version. Seeding does not supersede old rules or verify current legal applicability. Unverified summaries need officer review and valid effective dates before governed retrieval can use them.
+
+For a clean manual rerun, stop the services and use the seed command's opt-in reset mode:
+
+```sh
+# Preview only
+uv run chainlex-db seed-demo --reset --database chainlex_manual_fsm
+# Execute after checking the preview
+uv run chainlex-db seed-demo --reset --database chainlex_manual_fsm --execute --confirm-db chainlex_manual_fsm
+```
+
+Reset clears the five runtime collections and restores the ten known fixture records in one transaction. It preserves collections, indexes, unrelated entity/case records, regulations, policies, and controls. It is restricted to explicitly named `chainlex_manual_*` databases. See [manual reset and MongoDB checks](docs/manual-testing.md#9-optional-reset-through-the-seed-command) for details.
+
+Plain local MongoDB does not provide the Atlas Vector Search service used by this project. Use Atlas for retrieval work; vector-index definitions live in `src/chainlex/db/vector_indexes.json`. Seed data is bundled in the installed package; source summaries come from `data/country_rules/` and vectors come from the configured provider.
 
 The API, worker, and simulator run on the host by default. `Dockerfile` is also provided for packaging; a containerized process must use a MongoDB URI reachable from that container, not the host-only URI above.
 
@@ -81,8 +129,10 @@ All settings use the `CHAINLEX_` prefix; `.env` is local-only and ignored by Git
 | `DEMO_TENANT_ID` | Server-owned tenant binding for both demo roles |
 | `SIMULATOR_TOKEN`, `SIMULATOR_URL` | Separate connector credential and simulator endpoint |
 | `VOYAGE_API_KEY`, `EMBEDDING_MODEL`, `RERANK_MODEL` | Shared Voyage embedding configuration; model fixed to `voyage-finance-2` for the 1024-dimensional indexes; reranking reserved |
+| `EMBEDDING_ENDPOINT` | Explicit Atlas or Voyage platform embedding endpoint; must match the API key provider |
 | `LLM_API_KEY`, `LLM_MODEL` | Reserved analyst configuration; no provider calls yet |
 | `LEASE_SECONDS`, `HEARTBEAT_SECONDS`, `POLL_SECONDS` | Future worker timing; heartbeat must be shorter than lease |
+| `MAX_STEP_ATTEMPTS`, `RECONCILIATION_SECONDS` | Three attempts per step and a 120-second automated reconciliation deadline |
 
 Use only fictional demo data locally. This scaffold implements one server-configured demo tenant; multi-tenant authentication and production authorization remain part of the application work. There are no default usable tokens.
 
@@ -91,10 +141,11 @@ Use only fictional demo data locally. This scaffold implements one server-config
 ```text
 src/chainlex/
   api/          FastAPI app, authenticated route contracts, static status page
-  domain/       Request/action models and permitted workflow transitions
+  domain/       Six legs, state/event catalog, checkpoints, and transition contracts
   db/           Async MongoDB lifecycle, indexes, bootstrap, fixture seed
   connectors/   Settlement connector protocol and simulator HTTP adapter
-  services/     Analyst, policy gate, fenced repository, and proposal interfaces
+  blockchain/   Chain indexing, decoded events, audit pinning, and transaction search
+  services/     Analyst, policy gate, event-driven FSM repository, and proposal interfaces
   simulator/    Durable fictional settlement operations and HTTP service
   worker/       Independent idle worker entry point and shutdown handling
   auth.py       Server-bound demo identities and role checks

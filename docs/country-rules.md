@@ -1,5 +1,24 @@
 # Country regulations and review policies
 
+## Normal database seed
+
+`uv run chainlex-db seed-demo` now includes the current 12 review policies and
+three bank-admission policies, independently of regulation embeddings. Policies
+are bound to `CHAINLEX_DEMO_TENANT_ID` and inserted inactive and UNVERIFIED.
+Existing review decisions, allowlists, and versioned records are preserved.
+
+With a configured Voyage key, the command also embeds and ingests the 12 source
+summaries. Without a key, it reports the regulation phase as skipped and stores
+no unembedded regulations. A provider failure is an error after policy seeding;
+rerunning preserves those policies and retries only missing regulation versions.
+All vectors in the batch validate before the first regulation write.
+
+The wheel carries the same corpus, so the default seed is independent of the
+current directory. Manual reset still restores only the original six entity and
+four case fixtures and preserves all policy/regulation records.
+
+## Explicit corpus validation and ingestion
+
 Run from the repository root:
 
 ```sh
@@ -10,8 +29,10 @@ uv run python -m chainlex.services.country_cli ingest
 Validation is offline. Ingestion calls Voyage and writes to MongoDB; it requires
 `CHAINLEX_MONGODB_URI`, `CHAINLEX_DATABASE`, `CHAINLEX_DEMO_TENANT_ID` and
 `CHAINLEX_VOYAGE_API_KEY` from `.env`. Bootstrap collections first with
-`uv run chainlex-db bootstrap`. Atlas keys use the default endpoint; legacy Voyage
-keys require `--endpoint https://api.voyageai.com/v1/embeddings`.
+`uv run chainlex-db bootstrap`. Atlas keys use the default endpoint. For Voyage
+platform keys, set `CHAINLEX_EMBEDDING_ENDPOINT=https://api.voyageai.com/v1/embeddings`
+in `.env`; this also applies to normal seeding. The explicit ingestion command's
+`--endpoint` argument overrides that setting.
 
 The corpus contains 12 source-linked summaries and 12 internal review policies:
 four each for SG/MAS, CA/FINTRAC and US/OFAC/FinCEN. It is a starter dataset,

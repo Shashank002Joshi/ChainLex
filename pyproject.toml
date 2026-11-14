@@ -29,6 +29,9 @@ chainlex-db = "chainlex.db.cli:main"
 [tool.hatch.build.targets.wheel]
 packages = ["src/chainlex"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"data/country_rules" = "chainlex/data/country_rules"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"

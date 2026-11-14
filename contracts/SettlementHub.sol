@@ -8,7 +8,7 @@ pragma solidity ^0.8.20;
  */
 contract SettlementHub {
     address public operator;
-    
+
     // Settlement state: settlementId => isHeld
     mapping(bytes32 => bool) public isSettlementHeld;
     mapping(bytes32 => address) public settlementCounterparty;
@@ -168,4 +168,3 @@ contract SettlementHub {
         return allAuditRoots.length;
     }
 }
-

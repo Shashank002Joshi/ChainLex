@@ -142,4 +142,3 @@
   4. `EVMConnector` dispatches `freezeSettlement` $\rightarrow$ Receipt confirmed on-chain.
   5. Audit root pinned to contract $\rightarrow$ State verified in Atlas.
 - [ ] Document live demo execution commands for stage presentation.
-

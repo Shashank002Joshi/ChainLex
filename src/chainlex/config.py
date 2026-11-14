@@ -5,7 +5,7 @@ from typing import Literal, Self
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from chainlex.services.embeddings import EMBEDDING_MODEL
+from chainlex.services.embeddings import DEFAULT_EMBEDDING_ENDPOINT, EMBEDDING_MODEL
 
 
 class Settings(BaseSettings):
@@ -22,12 +22,18 @@ class Settings(BaseSettings):
     simulator_confirmation_seconds: float = Field(default=2, ge=0, le=300)
     voyage_api_key: SecretStr = SecretStr("")
     embedding_model: Literal["voyage-finance-2"] = EMBEDDING_MODEL
+    embedding_endpoint: Literal[
+        "https://ai.mongodb.com/v1/embeddings",
+        "https://api.voyageai.com/v1/embeddings",
+    ] = DEFAULT_EMBEDDING_ENDPOINT
     rerank_model: str = "rerank-2.5"
     llm_api_key: SecretStr = SecretStr("")
     llm_model: str = ""
     lease_seconds: int = Field(default=10, ge=2)
     heartbeat_seconds: float = Field(default=3, gt=0)
     poll_seconds: float = Field(default=1, gt=0)
+    max_step_attempts: int = Field(default=3, ge=1, le=10)
+    reconciliation_seconds: int = Field(default=120, ge=1)
 
     @model_validator(mode="after")
     def validate_runtime(self) -> Self:

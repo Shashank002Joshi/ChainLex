@@ -2,19 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from chainlex.config import Settings
-from chainlex.domain.models import HoldAction, JobState
-from chainlex.domain.transitions import can_transition
-
-
-def test_terminal_jobs_cannot_restart():
-    assert not can_transition(JobState.COMPLETED, JobState.CREATED)
-    assert not can_transition(JobState.DENIED, JobState.READY)
-
-
-def test_job_cannot_skip_policy():
-    assert not can_transition(JobState.ANALYZING, JobState.DISPATCHING)
-    assert can_transition(JobState.ANALYZING, JobState.AWAITING_POLICY)
-    assert can_transition(JobState.AWAITING_POLICY, JobState.AWAITING_REVIEW)
+from chainlex.domain.models import HoldAction
 
 
 @pytest.mark.parametrize("amount", [0, -1, 1.5, True])
