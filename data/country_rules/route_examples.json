@@ -1,0 +1,68 @@
+[
+  {
+    "scenario_id": "wealthsimple-ca-to-sg",
+    "description": "Fictional request from a Wealthsimple-labelled demo originator through Scotiabank, JPMorgan Chase and DBS. No real institutional integration or relationship is implied.",
+    "originator": {
+      "wallet": {
+        "network": "ethereum-sepolia",
+        "address": "0x1111111111111111111111111111111111111111"
+      },
+      "label": "Wealthsimple demo identity — fictional address, not an actual Wealthsimple wallet"
+    },
+    "case": {
+      "entity_type": "FINANCIAL_SERVICES_PLATFORM",
+      "transaction_type": "CROSS_BORDER_SETTLEMENT_REQUEST",
+      "narrative": "A fictional Wealthsimple client settlement request originates in Canada and is destined for Singapore through a US intermediary.",
+      "route": {
+        "route_id": "scotiabank-jpmorgan-dbs-demo",
+        "banks": [
+          {
+            "bank_id": "scotiabank",
+            "jurisdiction": "CA"
+          },
+          {
+            "bank_id": "jpmorgan_chase",
+            "jurisdiction": "US"
+          },
+          {
+            "bank_id": "dbs",
+            "jurisdiction": "SG"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "scenario_id": "dbs-sg-to-ca",
+    "description": "Fictional return corridor through DBS, JPMorgan Chase and Scotiabank.",
+    "originator": {
+      "wallet": {
+        "network": "ethereum-sepolia",
+        "address": "0x2222222222222222222222222222222222222222"
+      },
+      "label": "Binance demo identity — fictional address, not an actual Binance wallet"
+    },
+    "case": {
+      "entity_type": "EXCHANGE",
+      "transaction_type": "CROSS_BORDER_SETTLEMENT_REQUEST",
+      "narrative": "A fictional allowlisted exchange wallet requests settlement from Singapore to Canada through a US intermediary.",
+      "route": {
+        "route_id": "dbs-jpmorgan-scotiabank-demo",
+        "banks": [
+          {
+            "bank_id": "dbs",
+            "jurisdiction": "SG"
+          },
+          {
+            "bank_id": "jpmorgan_chase",
+            "jurisdiction": "US"
+          },
+          {
+            "bank_id": "scotiabank",
+            "jurisdiction": "CA"
+          }
+        ]
+      }
+    }
+  }
+]

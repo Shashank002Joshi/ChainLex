@@ -1,0 +1,51 @@
+{
+  "tenant_id": "chainlex-demo",
+  "schema_version": 1,
+  "chain_id": 11155111,
+  "tx_hash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "from": "0x1111111111111111111111111111111111111111",
+  "to": "0x5555555555555555555555555555555555555555",
+  "block_number": 100,
+  "block_hash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "timestamp": 1794672000,
+  "status": 1,
+  "is_canonical": true,
+  "is_orphaned": false,
+  "settlements": [
+    {
+      "event_name": "SettlementInitiated",
+      "source_event_name": "SettlementInitiatedV2",
+      "event_version": 2,
+      "settlement_id": "0x0101010101010101010101010101010101010101010101010101010101010101",
+      "initiator_wallet": "0x1111111111111111111111111111111111111111",
+      "beneficiary_wallet": "0x2222222222222222222222222222222222222222",
+      "asset": {
+        "amount_atomic": "250000000",
+        "symbol": "USDC",
+        "decimals": 6,
+        "contract_address": "0x3333333333333333333333333333333333333333"
+      },
+      "route": {
+        "route_id": "scotiabank-jpmorgan-dbs-demo",
+        "banks": [
+          {
+            "bank_id": "scotiabank",
+            "jurisdiction": "CA"
+          },
+          {
+            "bank_id": "jpmorgan_chase",
+            "jurisdiction": "US"
+          },
+          {
+            "bank_id": "dbs",
+            "jurisdiction": "SG"
+          }
+        ]
+      },
+      "instructions_hash": "0x4444444444444444444444444444444444444444444444444444444444444444",
+      "institution_verification": "UNVERIFIED",
+      "log_index": 0,
+      "contract_address": "0x5555555555555555555555555555555555555555"
+    }
+  ]
+}

@@ -4,12 +4,16 @@ import logging
 from typing import Any
 
 import eth_abi
+from pydantic import ValidationError
 
 from chainlex.blockchain.artifacts import (
+    SETTLEMENT_DETAILS_ABI_TYPE,
     TOPIC_AUDIT_ROOT_PINNED,
     TOPIC_SETTLEMENT_FROZEN,
     TOPIC_SETTLEMENT_INITIATED,
+    TOPIC_SETTLEMENT_INITIATED_V2,
 )
+from chainlex.domain.settlement import RoutedSettlement
 
 logger = logging.getLogger(__name__)
 
@@ -22,9 +26,50 @@ def decode_log(log: dict[str, Any]) -> dict[str, Any] | None:
 
     event_topic = topics[0].lower()
     raw_data = log.get("data", "0x")
-    data_bytes = (
-        bytes.fromhex(raw_data[2:]) if raw_data.startswith("0x") else bytes.fromhex(raw_data)
-    )
+    try:
+        data_bytes = bytes.fromhex(raw_data.removeprefix("0x"))
+    except ValueError:
+        logger.warning("Ignoring malformed event hex")
+        return None
+
+    if event_topic == TOPIC_SETTLEMENT_INITIATED_V2:
+        try:
+            if len(topics) != 4 or any(len(topic) != 66 for topic in topics):
+                raise ValueError("Invalid indexed V2 fields")
+            values = eth_abi.decode([SETTLEMENT_DETAILS_ABI_TYPE], data_bytes)[0]
+            amount, symbol, decimals, asset_contract, route_id, banks, countries, digest = values
+            if len(banks) != len(countries):
+                raise ValueError("Institution/country lengths differ")
+            settlement = RoutedSettlement.model_validate(
+                {
+                    "settlement_id": topics[1],
+                    "initiator_wallet": "0x" + topics[2][-40:],
+                    "beneficiary_wallet": "0x" + topics[3][-40:],
+                    "asset": {
+                        "amount_atomic": str(amount),
+                        "symbol": symbol,
+                        "decimals": decimals,
+                        "contract_address": asset_contract,
+                    },
+                    "route": {
+                        "route_id": route_id,
+                        "banks": [
+                            {"bank_id": bank, "jurisdiction": country}
+                            for bank, country in zip(banks, countries, strict=True)
+                        ],
+                    },
+                    "instructions_hash": "0x" + digest.hex(),
+                }
+            )
+        except (ValueError, ValidationError, eth_abi.exceptions.DecodingError):
+            logger.warning("Ignoring invalid routed settlement event")
+            return None
+        return {
+            # Normalize the dispatch name so the existing event bus handles both versions.
+            "event_name": "SettlementInitiated",
+            "source_event_name": "SettlementInitiatedV2",
+            **settlement.model_dump(mode="json"),
+        }
 
     if event_topic == TOPIC_SETTLEMENT_INITIATED.lower():
         # topics: [event_sig, settlementId, from, to]
@@ -97,9 +142,10 @@ def decode_log(log: dict[str, Any]) -> dict[str, Any] | None:
 class BlockchainIndexer:
     """Ingests blockchain data into MongoDB Atlas with tenant isolation and re-org resilience."""
 
-    def __init__(self, db: Any, tenant_id: str = "bank_a"):
+    def __init__(self, db: Any, tenant_id: str = "bank_a", chain_id: int | None = None):
         self.db = db
         self.tenant_id = tenant_id
+        self.chain_id = chain_id
 
     async def ingest_block(
         self,
@@ -118,6 +164,17 @@ class BlockchainIndexer:
 
         transactions = transactions or []
         logs = logs or []
+        decoded_logs = [(log, decode_log(log)) for log in logs]
+        routed_by_tx: dict[str, list[dict]] = {}
+        for log, decoded in decoded_logs:
+            if decoded and decoded.get("event_version") == 2:
+                routed_by_tx.setdefault(log.get("transactionHash", ""), []).append(
+                    {
+                        **decoded,
+                        "log_index": log.get("logIndex", 0),
+                        "contract_address": log.get("address", "").lower(),
+                    }
+                )
 
         reorg_detected = False
         reorg_block = None
@@ -194,6 +251,10 @@ class BlockchainIndexer:
                         "to": tx.get("to", "").lower(),
                         "value_minor": tx.get("value_minor", 0),
                         "currency": tx.get("currency", "USD"),
+                        "chain_id": self.chain_id,
+                        "block_hash": block_hash,
+                        "timestamp": timestamp,
+                        "settlements": routed_by_tx.get(tx_hash, []),
                         "block_number": block_num,
                         "status": tx.get("status", 1),
                         "input_data": tx.get("input_data", "0x"),
@@ -205,11 +266,10 @@ class BlockchainIndexer:
             )
 
         # 5. Ingest decoded contract events scoped by tenant_id
-        for log in logs:
+        for log, decoded in decoded_logs:
             tx_hash = log.get("transactionHash", "")
             log_index = log.get("logIndex", 0)
             contract_addr = log.get("address", "").lower()
-            decoded = decode_log(log)
 
             if decoded:
                 await self.db.contract_events.update_one(
@@ -224,6 +284,8 @@ class BlockchainIndexer:
                             "event_name": decoded["event_name"],
                             "decoded_params": decoded,
                             "block_number": block_num,
+                            "chain_id": self.chain_id,
+                            "block_hash": block_hash,
                             "is_orphaned": False,
                         }
                     },
