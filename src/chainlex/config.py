@@ -1,9 +1,11 @@
 """Validated environment configuration shared by the three processes."""
 
-from typing import Self
+from typing import Literal, Self
 
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from chainlex.services.embeddings import EMBEDDING_MODEL
 
 
 class Settings(BaseSettings):
@@ -19,7 +21,7 @@ class Settings(BaseSettings):
     simulator_url: str = "http://127.0.0.1:8001"
     simulator_confirmation_seconds: float = Field(default=2, ge=0, le=300)
     voyage_api_key: SecretStr = SecretStr("")
-    embedding_model: str = "voyage-finance-2"
+    embedding_model: Literal["voyage-finance-2"] = EMBEDDING_MODEL
     rerank_model: str = "rerank-2.5"
     llm_api_key: SecretStr = SecretStr("")
     llm_model: str = ""

@@ -1,13 +1,9 @@
 from datetime import UTC, datetime
 from pathlib import Path
 
-import httpx
-import pytest
-
 from chainlex.services.country_cli import load_corpus
 from chainlex.services.country_rules import (
     CaseFacts,
-    VoyageEmbeddings,
     evaluate_policies,
     ingest_rules,
     retrieval_pipeline,
@@ -20,7 +16,7 @@ async def test_ingestion_document_embedding_and_mongodb_shape():
 
     rules, _ = load_corpus(Path("data/country_rules"))
     voyage = SimpleNamespace(embed=AsyncMock(return_value=[[0.1] * 1024]))
-    collection = SimpleNamespace(update_one=AsyncMock())
+    collection = SimpleNamespace(update_one=AsyncMock(), find_one=AsyncMock(return_value=None))
     db = SimpleNamespace(regulations=collection)
     rule = rules[0].model_copy(update={"valid_from": datetime(2025, 1, 1, tzinfo=UTC)})
     await ingest_rules(db, voyage, [rule], "bank_a")
@@ -92,22 +88,3 @@ def test_governed_pipeline():
     assert {"valid_from": {"$lte": now}} in filters
     assert {"clearance_level": {"$lte": 2}} in filters
     assert "$or" in filters[-1]
-
-
-@pytest.mark.parametrize("dimension", [1024, 3])
-async def test_voyage_request_and_dimension_validation(dimension):
-    import json
-
-    def handler(request):
-        body = json.loads(request.content)
-        assert body["input_type"] == "document"
-        assert body["model"] == "voyage-finance-2"
-        return httpx.Response(200, json={"data": [{"index": 0, "embedding": [0.1] * dimension}]})
-
-    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
-        voyage = VoyageEmbeddings(http, "test-key")
-        if dimension == 1024:
-            assert len((await voyage.embed(["rule"], "document"))[0]) == 1024
-        else:
-            with pytest.raises(ValueError, match="1024"):
-                await voyage.embed(["rule"], "document")

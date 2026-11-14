@@ -112,6 +112,59 @@ SETTLEMENT_HUB_ABI: list[dict[str, Any]] = [
     },
 ]
 
+SETTLEMENT_DETAILS_COMPONENTS = [
+    {"name": "amountAtomic", "type": "uint256"},
+    {"name": "assetSymbol", "type": "string"},
+    {"name": "assetDecimals", "type": "uint8"},
+    {"name": "assetContract", "type": "address"},
+    {"name": "routeId", "type": "string"},
+    {"name": "institutionIds", "type": "string[]"},
+    {"name": "countryCodes", "type": "string[]"},
+    {"name": "instructionsHash", "type": "bytes32"},
+]
+SETTLEMENT_DETAILS_ABI_TYPE = (
+    "(" + ",".join(field["type"] for field in SETTLEMENT_DETAILS_COMPONENTS) + ")"
+)
+SETTLEMENT_HUB_ABI.extend(
+    [
+        {
+            "anonymous": False,
+            "name": "SettlementInitiatedV2",
+            "type": "event",
+            "inputs": [
+                {"indexed": True, "name": "settlementId", "type": "bytes32"},
+                {"indexed": True, "name": "initiator", "type": "address"},
+                {"indexed": True, "name": "beneficiary", "type": "address"},
+                {
+                    "indexed": False,
+                    "name": "details",
+                    "type": "tuple",
+                    "components": SETTLEMENT_DETAILS_COMPONENTS,
+                },
+            ],
+        },
+        {
+            "name": "initiateRoutedSettlement",
+            "type": "function",
+            "stateMutability": "nonpayable",
+            "outputs": [],
+            "inputs": [
+                {"name": "settlementId", "type": "bytes32"},
+                {"name": "beneficiary", "type": "address"},
+                {"name": "details", "type": "tuple", "components": SETTLEMENT_DETAILS_COMPONENTS},
+            ],
+        },
+        {
+            "name": "routedSettlementExists",
+            "type": "function",
+            "stateMutability": "view",
+            "inputs": [{"name": "", "type": "bytes32"}],
+            "outputs": [{"name": "", "type": "bool"}],
+        },
+    ]
+)
+
+TOPIC_SETTLEMENT_INITIATED_V2 = "0xf5548b597130fc82c3035c8967d9d53a305401fdc3dae125f99fc0befb632c79"
 TOPIC_SETTLEMENT_INITIATED = "0x676662d26f44cac97a9adaaacd070d76939d9b0e3cae099e99165ff694a20539"
 TOPIC_SETTLEMENT_FROZEN = "0x895c23d9d6c477b4e6107f27719bc987e6199ae8f1db3780923d7cb978a303d5"
 TOPIC_AUDIT_ROOT_PINNED = "0x630645a822292e0c735a4d9ccab1ccdfd4b257177b7cfb5e5dd522b9e91c695a"

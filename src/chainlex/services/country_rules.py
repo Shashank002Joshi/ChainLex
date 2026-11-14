@@ -1,16 +1,20 @@
 """Country corpus, deterministic review policies, and governed Voyage retrieval."""
 
-import hashlib
-import math
 from datetime import UTC, datetime
 from typing import Literal
 
-import httpx
-from pydantic import Field, HttpUrl
+from pydantic import Field, HttpUrl, model_validator
 
 from chainlex.domain.models import Contract
+from chainlex.domain.routing import Country, SettlementRoute
+from chainlex.services.embeddings import (
+    VoyageEmbeddings,
+    embedding_metadata,
+    has_current_embedding,
+    text_hash,
+    validate_vector,
+)
 
-Country = Literal["SG", "CA", "US"]
 ControlFact = Literal[
     "cdd_complete",
     "travel_rule_complete",
@@ -63,7 +67,8 @@ class ReviewPolicy(Contract):
 
 
 class CaseFacts(Contract):
-    jurisdictions: tuple[Country, ...] = Field(min_length=1)
+    jurisdictions: tuple[Country, ...] = ()
+    route: SettlementRoute | None = None
     entity_type: str
     transaction_type: str
     narrative: str = Field(min_length=1, max_length=10000)
@@ -77,9 +82,22 @@ class CaseFacts(Contract):
     risk_assessment_complete: bool | None = None
     beneficial_ownership_checked: bool | None = None
 
+    @model_validator(mode="after")
+    def require_geography(self):
+        if not self.jurisdictions and self.route is None:
+            raise ValueError("Provide jurisdictions or a settlement route")
+        return self
+
+    @property
+    def applicable_jurisdictions(self) -> tuple[Country, ...]:
+        route_countries = self.route.jurisdictions if self.route else ()
+        return tuple(dict.fromkeys((*self.jurisdictions, *route_countries)))
+
     def query_text(self) -> str:
         return (
-            f"Jurisdictions: {', '.join(self.jurisdictions)}. Entity: {self.entity_type}. "
+            f"Jurisdictions: {', '.join(self.applicable_jurisdictions)}. "
+            f"Route: {self.route.narrative() if self.route else 'not supplied'}. "
+            f"Entity: {self.entity_type}. "
             f"Transaction: {self.transaction_type}. {self.narrative}. "
             f"CDD complete: {self.cdd_complete}; Travel Rule complete: "
             f"{self.travel_rule_complete}; sanctions clear: {self.sanctions_clear}. "
@@ -91,7 +109,7 @@ def evaluate_policies(case: CaseFacts, policies: list[ReviewPolicy]) -> dict:
     """Unknown facts fail to review. No matching policy never implies approval."""
     matches = []
     for policy in policies:
-        if policy.jurisdiction in case.jurisdictions:
+        if policy.jurisdiction in case.applicable_jurisdictions:
             value = getattr(case, policy.required_fact)
             if value is not True:
                 matches.append(
@@ -105,62 +123,35 @@ def evaluate_policies(case: CaseFacts, policies: list[ReviewPolicy]) -> dict:
     return {"outcome": "REVIEW" if matches else "NO_MATCH", "matches": matches}
 
 
-class VoyageEmbeddings:
-    """Explicit endpoint supports Atlas and legacy Voyage keys; no implicit key routing."""
-
-    def __init__(
-        self,
-        client: httpx.AsyncClient,
-        api_key: str,
-        endpoint: str = "https://ai.mongodb.com/v1/embeddings",
-    ):
-        if not api_key:
-            raise ValueError("CHAINLEX_VOYAGE_API_KEY is required")
-        if endpoint not in {
-            "https://ai.mongodb.com/v1/embeddings",
-            "https://api.voyageai.com/v1/embeddings",
-        }:
-            raise ValueError("Unsupported Voyage endpoint")
-        self.client, self.api_key, self.endpoint = client, api_key, endpoint
-
-    async def embed(self, texts: list[str], input_type: Literal["document", "query"]):
-        response = await self.client.post(
-            self.endpoint,
-            headers={"Authorization": f"Bearer {self.api_key}"},
-            json={"input": texts, "model": "voyage-finance-2", "input_type": input_type},
-        )
-        response.raise_for_status()
-        data = sorted(response.json()["data"], key=lambda item: item["index"])
-        if [item["index"] for item in data] != list(range(len(texts))):
-            raise ValueError("Embedding response count/index mismatch")
-        vectors = [item["embedding"] for item in data]
-        for vector in vectors:
-            if len(vector) != 1024 or not all(
-                type(value) in (int, float) and math.isfinite(value) for value in vector
-            ):
-                raise ValueError("Expected 1024 finite numeric dimensions")
-        return vectors
-
-
 async def ingest_rules(db, voyage: VoyageEmbeddings, rules: list[Regulation], tenant_id: str):
     """Insert immutable content versions; do not overwrite an officer's later review."""
-    texts = [rule.embedding_text() for rule in rules]
-    vectors = await voyage.embed(texts, "document")
-    for rule, text, vector in zip(rules, texts, vectors, strict=True):
-        digest = hashlib.sha256(text.encode()).hexdigest()
+    if not tenant_id:
+        raise ValueError("Tenant is required")
+    pending = {}
+    for rule in rules:
+        text = rule.embedding_text()
+        key = f"{tenant_id}:{rule.rule_id}:{text_hash(text)}"
+        existing = await db.regulations.find_one({"_id": key, "tenant_id": tenant_id})
+        if existing is not None:
+            if not has_current_embedding(existing, text):
+                raise ValueError("Stored regulation embedding needs explicit repair or migration")
+            continue
+        pending[key] = (rule, text)
+    if not pending:
+        return
+    vectors = await voyage.embed([text for _, text in pending.values()], "document")
+    for (key, (rule, text)), vector in zip(pending.items(), vectors, strict=True):
         document = rule.model_dump(mode="python")
         document.update(
             {
-                "_id": f"{tenant_id}:{rule.rule_id}:{digest}",
+                "_id": key,
                 "source_url": str(rule.source_url),
                 "tenant_id": tenant_id,
                 "schema_version": 1,
                 "is_active": True,
                 "clearance_level": 1,
-                "text_hash": digest,
                 "embedding": vector,
-                "embedding_model": "voyage-finance-2",
-                "embedding_version": 1,
+                **embedding_metadata(text),
             }
         )
         await db.regulations.update_one(
@@ -178,6 +169,7 @@ def retrieval_pipeline(
 ):
     if not tenant_id or clearance < 1 or not 1 <= limit <= 20:
         raise ValueError("Invalid retrieval scope")
+    validate_vector(vector)
     return [
         {
             "$vectorSearch": {
@@ -189,7 +181,7 @@ def retrieval_pipeline(
                 "filter": {
                     "$and": [
                         {"tenant_id": {"$eq": tenant_id}},
-                        {"jurisdiction": {"$in": list(case.jurisdictions)}},
+                        {"jurisdiction": {"$in": list(case.applicable_jurisdictions)}},
                         {"review_status": {"$eq": "VERIFIED"}},
                         {"is_active": {"$eq": True}},
                         {"clearance_level": {"$lte": clearance}},
@@ -211,9 +203,26 @@ def retrieval_pipeline(
 async def retrieve_rules(
     db, voyage: VoyageEmbeddings, case: CaseFacts, tenant_id: str, clearance: int
 ):
-    vector = (await voyage.embed([case.query_text()], "query"))[0]
-    cursor = db.regulations.aggregate(
-        retrieval_pipeline(case, vector, tenant_id, clearance, datetime.now(UTC))
-    )
-    cursor = await cursor
-    return [document async for document in cursor]
+    # Route cases reserve a result budget for each country. A single global top-3
+    # could otherwise omit an intermediary's regulations entirely.
+    cases = [case]
+    if case.route is not None:
+        cases = [
+            case.model_copy(
+                update={
+                    "route": None,
+                    "jurisdictions": (country,),
+                    "narrative": f"{case.narrative}. Full route: {case.route.narrative()}",
+                }
+            )
+            for country in case.applicable_jurisdictions
+        ]
+    vectors = await voyage.embed([item.query_text() for item in cases], "query")
+    now = datetime.now(UTC)
+    results = []
+    for item, vector in zip(cases, vectors, strict=True):
+        cursor = await db.regulations.aggregate(
+            retrieval_pipeline(item, vector, tenant_id, clearance, now)
+        )
+        results.extend([document async for document in cursor])
+    return results
