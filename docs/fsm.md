@@ -1,6 +1,51 @@
 # Compliance FSM: design and recovery
 
-One durable compliance FSM covers intake, evidence, analysis, authorization, dispatch, and verification. The tables below specify the intended runtime contract. The current scaffold exposes definitions and typed interfaces; durable handlers and end-to-end execution remain implementation work.
+The implemented audit profile uses one durable FSM for intake, evidence,
+analysis, draft publication, human review, and finalization. The separate
+settlement profile below specifies authorization, dispatch and effect verification;
+its instance handlers remain scaffolded.
+
+## Implemented audit profile
+
+Three agents map directly to the hackathon statements: Auditable Action enforces
+identity/policy and assesses routes; Governed Memory retrieves tenant-scoped,
+reviewed, unexpired precedents; Durable Completion coordinates saved steps and
+verifies published artifacts. Human analyst/officer permissions are separate.
+
+| State | Event and guard | Persisted result / recovery |
+|---|---|---|
+| `RECEIVED` | `CONTEXT_VALIDATED`: permitted adapter, valid route endpoints and bank sequence | Context and adapter snapshot; unsupported schema enters manual review |
+| `RETRIEVING_EVIDENCE` | `QUERY_EMBEDDED`: permitted real Voyage request; `EVIDENCE_SAVED`: permitted search and authoritative governance checks | Saved vector, source/memory versions and retrieval status; a search retry reuses the vector |
+| `ASSESSING_ROUTES` | `ANALYSIS_VALIDATED`: current policy and evidence | Per-bank/jurisdiction checks, conditional/no-route outcome, memory ablation, human gates and analysis digest |
+| `PUBLISHING_DRAFT` | `REPORT_PREPARED`, then `DRAFT_REPORT_VERIFIED`: authorized publication, saved operation identity, read-back digest verification | Immutable snapshot/PDF manifest; after lost response probe the saved file before any new upload |
+| `AWAITING_HUMAN_REVIEW` | `HUMAN_GATE_DECIDED`: officer, exact revision/digest, current dependencies | Recorded decisions; final sign-off requires all preceding gates resolved |
+| `PUBLISHING_FINAL` | `FINAL_REPORT_VERIFIED`: dependencies/decisions remain valid and stored bytes match the snapshot manifest | Reviewed final PDF and `FINALIZED`; rejection remains an explicit outcome |
+
+`RETRY_WAIT` stores its original business resume state, attempts and due time.
+Transient failures use bounded retries and honor provider `Retry-After` up to
+60 seconds. Exhaustion enters `MANUAL_REVIEW`; officer retry cannot install an
+unknown schema adapter or jump to a later leg. Supported source versions 1/2 use
+explicit adapters; the demo's version 99 stops for correction.
+
+Each checkpoint commit atomically appends a hash-linked event and an immutable
+`audit_artifacts` snapshot. Refreshing stale evidence clears working approvals,
+but retains prior artifacts and PDFs. Policy proposals are input/version-bound
+and cannot change active policy without a separate officer decision.
+
+Fenced leases and independent heartbeats prevent stale workers from writing.
+Action permits conditionally write both tenant control and active agent identity
+inside the transaction, serializing with pause/revocation. Pause prevents new
+permits; saved uploads are still probed and their outcomes recorded. A superseded
+upload cannot become the current final report. Change Streams accelerate notice;
+authoritative checks and polling remain the correctness path.
+
+Use `/api/audits/definition`, `/api/audits/{id}`, its `/events`, `/reports`, and
+`/export` endpoints. Export includes the complete ledger, policy snapshot,
+immutable checkpoint artifacts and verified report manifests. Scripted source
+references remain unverified and do not establish bank connectivity or legal
+clearance. No audit transition submits a settlement action.
+
+## Separate settlement profile
 
 See the [architecture and demo plan](../chainlex_enriched_hackathon_plan.md) for presentation context and the [README](../README.md) for current capabilities.
 

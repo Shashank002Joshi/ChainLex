@@ -19,22 +19,25 @@
   </head>
   <body>
     <main>
-      <p class="label">PROJECT SCAFFOLD · SIMULATION ONLY</p>
+      <p class="label">AUDIT AGENTS · SETTLEMENT SCAFFOLD</p>
       <h1>ChainLex</h1>
       <p>A foundation for governed, auditable settlement compliance.</p>
       <hr>
-      <h2>Six-leg compliance FSM scaffold</h2>
-      <p>The API, worker, and persistent simulator have independent entry points.
-        Compliance analysis and settlement workflow execution are not implemented yet.</p>
-      <p>Intake → Evidence → Analysis → Authorization → Dispatch → Verification.</p>
-      <p>The authenticated <code>/api/fsms/definition</code> endpoint describes each leg’s states, events, guards, checkpoints, and recovery rules.</p>
+      <h2>Three agents, one durable audit</h2>
+      <p>Auditable Action, Governed Memory, and Durable Completion coordinate
+        evidence, route recommendations, human gates, and draft/final PDFs.</p>
+      <p>Intake → Evidence → Analysis → Draft → Human review → Finalization.</p>
+      <p>Reasoning uses labelled demo fixtures. Voyage embeddings, Atlas state,
+        memory governance, and report verification are real.</p>
+      <p>Use the authenticated <code>/api/audits</code> API and
+        <code>/api/audits/definition</code> to run and inspect the workflow.</p>
       <ul>
         <li><a href="/docs">Inspect the API contracts</a></li>
         <li><a href="/health/live">Check API liveness</a></li>
         <li><a href="/health/ready">Check database readiness</a></li>
       </ul>
-      <p>Workflow routes return <code>501 WORKFLOW_NOT_IMPLEMENTED</code>.
-        This page does not report a compliance decision or a blockchain action.</p>
+      <p>The separate settlement FSM instance routes still return
+        <code>501 WORKFLOW_NOT_IMPLEMENTED</code>. Audit agents do not move funds.</p>
     </main>
   </body>
 </html>

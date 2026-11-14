@@ -55,8 +55,6 @@ def test_analyst_cannot_approve(client):
         ("get", "/api/fsms/fsm-1", None),
         ("get", "/api/fsms/fsm-1/events?after_seq=0", None),
         ("get", "/api/fsms/fsm-1/export", None),
-        ("post", "/api/control", {"paused": True}),
-        ("post", "/api/memories/mem-1/invalidate", {"reason": "Incorrect source"}),
         (
             "post",
             "/api/proposals/proposal-1/decision",
@@ -72,6 +70,20 @@ def test_planned_routes_are_registered(client, method, path, payload):
         **({"json": payload} if payload is not None else {}),
     )
     assert response.status_code == 501
+
+
+@pytest.mark.parametrize(
+    ("path", "payload"),
+    [
+        ("/api/control", {"paused": True}),
+        ("/api/memories/mem-1/invalidate", {"expected_version": 1, "reason": "Incorrect source"}),
+    ],
+)
+def test_implemented_governance_requires_database(client, path, payload):
+    response = client.post(
+        path, json=payload, headers={"Authorization": "Bearer officer-test-token"}
+    )
+    assert response.status_code == 503
 
 
 def test_unknown_scenario_rejected(client):

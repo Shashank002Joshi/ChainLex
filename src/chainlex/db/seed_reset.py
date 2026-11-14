@@ -54,6 +54,15 @@ async def reset_seed_demo(
 ) -> dict:
     validate_reset_target(database.name, execute=execute, confirmation=confirmation)
     required = set(RUNTIME_COLLECTIONS) | set(fixture_documents())
+    if (
+        await database.compliance_fsms.count_documents({"workflow_type": "AUDIT"})
+        or await database.audit_reports.count_documents({})
+        or await database.audit_artifacts.count_documents({})
+    ):
+        raise SeedResetError(
+            "Legacy seed reset cannot remove audit runs while preserving their reports/artifacts; "
+            "use a new manual database namespace."
+        )
     if not required <= set(await database.list_collection_names()):
         raise SeedResetError("Run bootstrap for the selected manual database before resetting")
     await _check_fixture_ownership(database)
