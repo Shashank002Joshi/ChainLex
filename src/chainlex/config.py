@@ -5,7 +5,7 @@ from typing import Literal, Self
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from chainlex.services.embeddings import EMBEDDING_MODEL
+from chainlex.services.embeddings import DEFAULT_EMBEDDING_ENDPOINT, EMBEDDING_MODEL
 
 
 class Settings(BaseSettings):
@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     simulator_confirmation_seconds: float = Field(default=2, ge=0, le=300)
     voyage_api_key: SecretStr = SecretStr("")
     embedding_model: Literal["voyage-finance-2"] = EMBEDDING_MODEL
+    embedding_endpoint: Literal[
+        "https://ai.mongodb.com/v1/embeddings",
+        "https://api.voyageai.com/v1/embeddings",
+    ] = DEFAULT_EMBEDDING_ENDPOINT
     rerank_model: str = "rerank-2.5"
     llm_api_key: SecretStr = SecretStr("")
     llm_model: str = ""

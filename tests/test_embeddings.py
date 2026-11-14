@@ -58,7 +58,9 @@ async def test_regulation_reimport_skips_api_preserves_review_and_embeds_changes
         return stored.get(query["_id"])
 
     async def update_one(query, update, **kwargs):
+        inserted = query["_id"] not in stored
         stored.setdefault(query["_id"], update["$setOnInsert"])
+        return SimpleNamespace(upserted_id=query["_id"] if inserted else None)
 
     db = SimpleNamespace(regulations=SimpleNamespace(find_one=find_one, update_one=update_one))
     voyage = SimpleNamespace(embed=AsyncMock(return_value=[[0.1] * 1024]))

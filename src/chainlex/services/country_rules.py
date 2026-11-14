@@ -6,7 +6,7 @@ from typing import Literal
 from pydantic import Field, HttpUrl, model_validator
 
 from chainlex.domain.models import Contract
-from chainlex.domain.routing import Country, SettlementRoute
+from chainlex.domain.routing import BankAdmissionPolicy, Country, SettlementRoute
 from chainlex.services.embeddings import (
     VoyageEmbeddings,
     embedding_metadata,
@@ -137,9 +137,18 @@ async def ingest_rules(db, voyage: VoyageEmbeddings, rules: list[Regulation], te
                 raise ValueError("Stored regulation embedding needs explicit repair or migration")
             continue
         pending[key] = (rule, text)
+    result = {
+        "available": len(rules),
+        "inserted": 0,
+        "existing_preserved": len(rules) - len(pending),
+    }
     if not pending:
-        return
+        return result
     vectors = await voyage.embed([text for _, text in pending.values()], "document")
+    if len(vectors) != len(pending):
+        raise ValueError("Regulation embedding count does not match pending content versions")
+    for vector in vectors:
+        validate_vector(vector)
     for (key, (rule, text)), vector in zip(pending.items(), vectors, strict=True):
         document = rule.model_dump(mode="python")
         document.update(
@@ -149,14 +158,56 @@ async def ingest_rules(db, voyage: VoyageEmbeddings, rules: list[Regulation], te
                 "tenant_id": tenant_id,
                 "schema_version": 1,
                 "is_active": True,
+                "review_status": "UNVERIFIED",
                 "clearance_level": 1,
                 "embedding": vector,
                 **embedding_metadata(text),
             }
         )
-        await db.regulations.update_one(
+        write = await db.regulations.update_one(
             {"_id": document["_id"]}, {"$setOnInsert": document}, upsert=True
         )
+        if write.upserted_id is not None:
+            result["inserted"] += 1
+        else:
+            result["existing_preserved"] += 1
+    return result
+
+
+async def ingest_policies(
+    db, policies: list[ReviewPolicy | BankAdmissionPolicy], tenant_id: str
+) -> dict:
+    """Add inactive tenant-owned policy versions without overwriting review decisions."""
+    if not tenant_id:
+        raise ValueError("Tenant is required")
+    keys = [f"{tenant_id}:{policy.policy_id}:v{policy.version}" for policy in policies]
+    if len(keys) != len(set(keys)):
+        raise ValueError("Duplicate policy ID/version in the target tenant")
+    result = {
+        "review_policies": sum(isinstance(policy, ReviewPolicy) for policy in policies),
+        "bank_policies": sum(isinstance(policy, BankAdmissionPolicy) for policy in policies),
+        "inserted": 0,
+        "existing_preserved": 0,
+    }
+    for key, policy in zip(keys, policies, strict=True):
+        document = policy.model_dump(mode="json")
+        document.update(
+            {
+                "_id": key,
+                "tenant_id": tenant_id,
+                "schema_version": 1,
+                "is_active": False,
+                "review_status": "UNVERIFIED",
+            }
+        )
+        write = await db.policies.update_one(
+            {"_id": key, "tenant_id": tenant_id}, {"$setOnInsert": document}, upsert=True
+        )
+        if write.upserted_id is not None:
+            result["inserted"] += 1
+        else:
+            result["existing_preserved"] += 1
+    return result
 
 
 def retrieval_pipeline(

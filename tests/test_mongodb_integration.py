@@ -10,8 +10,9 @@ from pymongo.errors import DuplicateKeyError
 from chainlex.blockchain.artifacts import TOPIC_SETTLEMENT_INITIATED
 from chainlex.blockchain.indexer import BlockchainIndexer
 from chainlex.connectors.simulator import prepare_action
-from chainlex.db.cli import preflight, seed_demo
+from chainlex.db.cli import preflight
 from chainlex.db.indexes import LegacySchemaError, bootstrap
+from chainlex.db.seeding import seed_demo
 from chainlex.domain.models import HoldAction, ProbeOutcome
 from chainlex.simulator.store import MongoOperationStore, OperationConflict
 

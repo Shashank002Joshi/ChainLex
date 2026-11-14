@@ -97,7 +97,11 @@ uv run chainlex-db bootstrap
 uv run chainlex-db seed-demo
 ```
 
-`preflight` checks replica-set/sharded topology and commits a disposable database transaction. `bootstrap` is repeatable. `seed-demo` creates six fictional entities and four unreviewed historical fixtures across two tenants without overwriting later edits. These fixtures are not eligible to authorize a compliance action.
+`preflight` checks replica-set/sharded topology and commits a disposable database transaction. `bootstrap` is repeatable. `seed-demo` retains the six fictional entities and four historical fixtures, and adds the current corpus's 12 review policies and three bank-admission policies for `CHAINLEX_DEMO_TENANT_ID`. New policies are inactive and UNVERIFIED. Tenant-owned demo bank policies are bound to that configured tenant; bank IDs do not grant access to another tenant's private data.
+
+Regulations require real Voyage embeddings before insertion. With `CHAINLEX_VOYAGE_API_KEY` configured, the same command embeds missing content versions using `voyage-finance-2` and stores validated 1,024-dimensional vectors for the 12 source-linked summaries. Without a key, policies still seed and the JSON result reports `regulations.status: skipped` with a missing-key reason; it writes no placeholder regulation records or vectors. Policies are seeded before the embedding request, so a provider failure does not block their insertion. `CHAINLEX_EMBEDDING_ENDPOINT` defaults to `https://ai.mongodb.com/v1/embeddings` for Atlas model keys; set it to `https://api.voyageai.com/v1/embeddings` for Voyage platform keys. The explicit country ingestion CLI also supports its existing `--endpoint` override.
+
+The result reports inserted versus preserved policy/regulation counts. Repeated runs preserve existing records and officer decisions. Changed regulation text creates a new hash-versioned record; a changed policy needs a new explicit policy version. Seeding does not supersede old rules or verify current legal applicability. Unverified summaries need officer review and valid effective dates before governed retrieval can use them.
 
 For a clean manual rerun, stop the services and use the seed command's opt-in reset mode:
 
@@ -110,7 +114,7 @@ uv run chainlex-db seed-demo --reset --database chainlex_manual_fsm --execute --
 
 Reset clears the five runtime collections and restores the ten known fixture records in one transaction. It preserves collections, indexes, unrelated entity/case records, regulations, policies, and controls. It is restricted to explicitly named `chainlex_manual_*` databases. See [manual reset and MongoDB checks](docs/manual-testing.md#9-optional-reset-through-the-seed-command) for details.
 
-Plain local MongoDB does not provide the Atlas Vector Search service used by this project. Use Atlas for retrieval work; vector-index definitions live in `src/chainlex/db/vector_indexes.json`. No regulatory corpus or embeddings are fabricated by the scaffold.
+Plain local MongoDB does not provide the Atlas Vector Search service used by this project. Use Atlas for retrieval work; vector-index definitions live in `src/chainlex/db/vector_indexes.json`. Seed data is bundled in the installed package; source summaries come from `data/country_rules/` and vectors come from the configured provider.
 
 The API, worker, and simulator run on the host by default. `Dockerfile` is also provided for packaging; a containerized process must use a MongoDB URI reachable from that container, not the host-only URI above.
 
@@ -125,6 +129,7 @@ All settings use the `CHAINLEX_` prefix; `.env` is local-only and ignored by Git
 | `DEMO_TENANT_ID` | Server-owned tenant binding for both demo roles |
 | `SIMULATOR_TOKEN`, `SIMULATOR_URL` | Separate connector credential and simulator endpoint |
 | `VOYAGE_API_KEY`, `EMBEDDING_MODEL`, `RERANK_MODEL` | Shared Voyage embedding configuration; model fixed to `voyage-finance-2` for the 1024-dimensional indexes; reranking reserved |
+| `EMBEDDING_ENDPOINT` | Explicit Atlas or Voyage platform embedding endpoint; must match the API key provider |
 | `LLM_API_KEY`, `LLM_MODEL` | Reserved analyst configuration; no provider calls yet |
 | `LEASE_SECONDS`, `HEARTBEAT_SECONDS`, `POLL_SECONDS` | Future worker timing; heartbeat must be shorter than lease |
 | `MAX_STEP_ATTEMPTS`, `RECONCILIATION_SECONDS` | Three attempts per step and a 120-second automated reconciliation deadline |

@@ -1,5 +1,17 @@
 # Scaffold verification
 
+## Regulation and policy seed update
+
+Verified November 14, 2026 on `feature/fsm-main-integration`:
+
+- Normal `seed-demo` now adds 12 review policies and three bank-admission policies independently of regulation embedding. New policies are inactive and UNVERIFIED; existing review changes are preserved.
+- Without a Voyage key, no regulation documents are written and the JSON summary explicitly reports the skipped phase. Provider/embedding failures occur after independent policy insertion.
+- **129 offline tests passed**. **Three Atlas integration tests passed** in disposable namespaces, covering additive policy seeding, regulation persistence with mocked provider vectors, preserved reviews, tenant scope, and unchanged fixture-reset behavior.
+- The user's key was saved only in the ignored `.env`. Atlas rejected that Voyage platform key at its separate endpoint; the new allowlisted `CHAINLEX_EMBEDDING_ENDPOINT` setting selected `https://api.voyageai.com/v1/embeddings` instead. No credential values were printed or added to source files.
+- The real normal seed succeeded on `chainlex_dev` for tenant `bank_a`: six existing entities, four existing cases, 15 policies, and 12 regulation summaries with real `voyage-finance-2` embeddings. Every regulation vector validated at 1,024 finite numeric dimensions. New summaries remain UNVERIFIED and still require applicability/effective-date review.
+- Hash comparisons confirmed preservation of all preexisting targeted records. A subsequent real seed inserted zero policies and zero regulation versions and reused all 12 valid embeddings. No application reset or schema migration ran.
+- Lint, formatting, package build, Compose configuration, and whitespace checks passed. The isolated Python 3.12 wheel loaded all corpus files outside the source tree. The Docker source now includes seed data for the same packaging behavior.
+
 ## Main integration branch
 
 On November 14, 2026, `feature/fsm-main-integration` was created from the FSM scaffold branch. The local FSM/manual-testing/seed-reset work was checkpointed before merging main commit `3c85b18`.

@@ -21,7 +21,8 @@ Expected output:
 
 - Preflight reports `database: reachable`, `topology: transaction_capable`, and `transaction: committed`.
 - Bootstrap reports `bootstrap: complete`.
-- Seed reports six entities, four cases, and `review_status: UNVERIFIED`.
+- Seed reports six entities, four cases, 12 review policies, and three bank policies. New policies are inactive and UNVERIFIED.
+- With a Voyage key configured, the regulation phase reports complete with 12 available summaries and inserted/preserved counts. Without a key, it explicitly reports skipped; no unembedded regulation records are inserted.
 
 Confirm the selected namespace and tenant without printing credentials:
 
@@ -39,7 +40,7 @@ PY
 
 Expected database: `chainlex_manual_fsm`. The default demo tenant is `bank_a`.
 
-The seed command is repeatable: rerunning it preserves the same six fixture entities and four fixture cases rather than creating duplicates. In an already-used database, existing edits to those fixtures are preserved.
+The seed command is repeatable: rerunning preserves entity/case edits, existing policy reviews, and valid regulation embeddings. After a successful first corpus seed, repeat runs insert no additional policy/regulation versions and make no embedding request for unchanged rules. These summaries remain UNVERIFIED until an officer reviews their applicability and dates.
 
 If bootstrap reports a legacy unique `job_id` index, stop that setup attempt. It requires a separately reviewed migration. Use a fresh database name consistently in all terminals to continue this manual test. Setup does not migrate or remove existing collections or indexes; the optional seed reset below also preserves them.
 
@@ -256,9 +257,9 @@ For a fresh manual-test namespace, expect these results after steps 1–5:
 | `agent_action_proposals` | Empty: the FSM policy/approval handlers are absent. |
 | `tx_outbox` | Empty: direct simulator calls do not create outbox actions. |
 | `audit_ledger` | Empty: no durable FSM transitions ran. |
-| `policies` | Empty: bootstrap does not seed executable policies. |
+| `policies` | 12 review policies and three bank-admission policies for the configured demo tenant; newly inserted records are inactive and UNVERIFIED. |
 | `tenant_controls` | Empty: bootstrap defines the collection/index, not an active control record. |
-| `regulations` | Empty: verified regulatory ingestion is not implemented. |
+| `regulations` | 12 UNVERIFIED summaries with real 1,024-dimensional embeddings when a Voyage key is configured; otherwise unchanged/empty with an explicit skipped result. Review and valid effective dates are still required for governed retrieval. |
 | `chain_blocks`, `chain_transactions`, `contract_events` | Empty during this simulator walkthrough; these are populated only when the separate blockchain indexer is used. |
 
 An additional `_preflight` collection may exist with zero documents. Preflight deletes its temporary marker after the transaction check.

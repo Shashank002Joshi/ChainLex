@@ -5,13 +5,14 @@ import asyncio
 import json
 from uuid import uuid4
 
+import httpx
 from pymongo.errors import PyMongoError
 
 from chainlex.config import Settings
 from chainlex.db.connection import create_client
+from chainlex.db.corpus_seeding import seed_latest
 from chainlex.db.indexes import LegacySchemaError, bootstrap
 from chainlex.db.seed_reset import SeedResetError, reset_seed_demo, validate_reset_target
-from chainlex.db.seeding import seed_demo
 
 
 async def preflight(client, database) -> dict:
@@ -57,7 +58,7 @@ async def run(
             return {"bootstrap": "complete"}
         if reset:
             return await reset_seed_demo(database, execute=execute, confirmation=confirmation)
-        return await seed_demo(database)
+        return await seed_latest(database, settings)
     finally:
         await client.close()
 
@@ -95,6 +96,12 @@ def main() -> None:
         )
     except (LegacySchemaError, SeedResetError) as exc:
         parser.exit(1, f"{exc}\n")
+    except httpx.HTTPError:
+        parser.exit(
+            1,
+            "Policies were seeded independently, but Voyage embedding failed. "
+            "Check the API key and provider availability, then rerun seed-demo.\n",
+        )
     except (ValueError, PyMongoError):
         parser.exit(1, "Database command failed; check settings, connectivity, and permissions.\n")
     print(json.dumps(result))
