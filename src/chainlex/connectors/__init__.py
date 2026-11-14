@@ -1,0 +1,1 @@
+"""External settlement adapter boundaries."""

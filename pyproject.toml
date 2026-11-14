@@ -1,0 +1,44 @@
+[build-system]
+requires = ["hatchling>=1.26,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "chainlex"
+version = "0.1.0"
+description = "Foundation for governed, auditable, durable settlement compliance workflows"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "uvicorn>=0.34,<1",
+  "pydantic-settings>=2.7,<3",
+  "pymongo>=4.13,<5",
+  "httpx>=0.28,<1",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.3,<10", "pytest-asyncio>=0.25,<2", "ruff>=0.11,<1"]
+
+[project.scripts]
+chainlex-api = "chainlex.api.app:main"
+chainlex-worker = "chainlex.worker.main:main"
+chainlex-simulator = "chainlex.simulator.app:main"
+chainlex-db = "chainlex.db.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/chainlex"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = ["integration: requires CHAINLEX_TEST_MONGODB_URI pointing at a disposable database"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["*.md"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC"]
+ignore = ["B008"]
