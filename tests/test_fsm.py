@@ -29,7 +29,7 @@ def make_wait(**kwargs):
 
 
 def test_approved_crash_trace_is_representable_without_skipping_legs():
-    spec = Path("docs/superpowers/specs/2026-11-14-compliance-fsm-design.md").read_text()
+    spec = Path("./docs/fsm.md").read_text()
     trace = re.findall(r"^([A-Z_]+)\s*->\s*([A-Z_]+)$", spec, re.M)
     assert len(trace) == 25
     current = None

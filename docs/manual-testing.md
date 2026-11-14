@@ -9,7 +9,7 @@ Use the Atlas connection and tokens already saved in `.env`. These steps use a s
 In a terminal:
 
 ```sh
-cd /Users/devchetal/ChainLex
+cd ./ChainLex
 export CHAINLEX_DATABASE=chainlex_manual_fsm
 uv sync --locked --group dev
 uv run chainlex-db preflight

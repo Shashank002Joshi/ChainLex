@@ -1,48 +1,14 @@
-# Routed settlement events (V2)
+# Settlement events
 
-The transaction envelope answers where and when a request appeared on-chain.
-The settlement payload answers who submitted it, what asset amount it concerns,
-and which institutional route was requested. Institution identities are distinct
-from wallet addresses and from the tenant that can access the record.
+`SettlementInitiatedV2` records a routed request. It does not move tokens, prove
+institution ownership, authorize settlement, or establish payment finality.
+The implementation is in `./contracts/SettlementHub.sol`,
+`./src/chainlex/blockchain/artifacts.py`, and `./src/chainlex/domain/settlement.py`.
 
-## Recommended structure
-
-| Field | Meaning and authority |
-|---|---|
-| `tenant_id` | Application-owned data access scope |
-| `chain_id` | Chain identity supplied by the trusted RPC/indexer configuration |
-| `tx_hash`, `block_hash`, `block_number`, `timestamp` | Transaction provenance |
-| `status` | EVM execution result, not compliance approval or payment finality |
-| `is_canonical`, `is_orphaned` | Indexer's fork tracking |
-| `settlements[]` | One item per decoded V2 initiation log in this transaction |
-| `settlements[].log_index`, `contract_address` | Exact source event within the transaction |
-| `settlement_id` | Request identifier, separate from the transaction hash |
-| `initiator_wallet` | V2 contract caller (`msg.sender`) |
-| `beneficiary_wallet` | Intended beneficiary, separate from the transaction's `to` contract |
-| `asset.amount_atomic` | Positive uint256 encoded as a decimal string for MongoDB/JSON |
-| `asset.symbol`, `decimals`, `contract_address` | Submitted asset identity and scaling |
-| `route.route_id`, `route.banks[]` | Ordered originating, intermediary and destination institutions |
-| `route.banks[].bank_id`, `jurisdiction` | Stable registry ID and ISO alpha-2 country |
-| `instructions_hash` | Commitment/reference to transfer instructions stored off-chain |
-| `institution_verification` | UNVERIFIED until trusted identity and route checks are performed |
-
-The first route institution is the originating bank, the last is the destination,
-and all others are intermediaries. Countries are derived from the entire ordered
-route rather than duplicated as potentially inconsistent source/destination fields.
-`250000000` atomic units at 6 decimals means `250.000000 USDC`, not USD 2,500,000.
-Do not use floating-point amounts or assume all assets have two decimals.
-
-`data/country_rules/settlement_transaction_example.json` shows the indexed shape.
-All institution relationships, wallet addresses, token contracts and hashes in
-that example are fictional. Wealthsimple is the demo initiating institution;
-Scotiabank, JPMorgan Chase and DBS are the routing banks. An on-chain symbol,
-country or institution ID is a submitted claim; validate it against the trusted
-asset/institution registry. The contract does not prove ownership or licensing.
-
-## Contract and ABI
+## Payload
 
 `initiateRoutedSettlement(bytes32 settlementId, address beneficiary,
-SettlementDetails details)` emits `SettlementInitiatedV2`. The details tuple contains:
+SettlementDetails details)` takes:
 
 ```text
 uint256 amountAtomic
@@ -55,75 +21,66 @@ string[] countryCodes
 bytes32 instructionsHash
 ```
 
-The two arrays must have identical lengths of 2–32 entries; repeated institution
-IDs, unknown country codes (currently anything other than CA/US/SG), zero amounts
-and decimals above 18 are rejected. V2 identifiers cannot be submitted twice.
-The contract records the request and emits the event; it does not transfer tokens
-or enforce bank allowlists. A relayer calling the contract is the indexed initiator;
-representing an original signer would need a separately verified authorization.
+The event indexes settlement ID, initiator (`msg.sender`), and beneficiary.
+The ordered institution arrays describe the origin, intermediaries, and destination.
+Example indexed data is in `./data/country_rules/settlement_transaction_example.json`;
+its wallets, hashes, asset contracts, and institution relationships are fictional.
 
-The event's indexed fields are settlement ID, initiator and beneficiary. Private
-names, account numbers, Travel Rule payloads and compliance evidence stay off-chain.
-The bytes32 instructions hash commits to those instructions without embedding the
-instructions themselves in a public log. Hash creation/storage is handled by the
-calling application and is not implemented by this contract.
+| Field | Meaning |
+|---|---|
+| `tenant_id` | Server-owned data access scope |
+| `chain_id` | Trusted node/indexer configuration |
+| `tx_hash`, `block_hash`, `block_number`, `timestamp` | Transaction provenance |
+| `status` | EVM execution result, not compliance approval |
+| `is_canonical`, `is_orphaned` | Fork tracking |
+| `settlements[].log_index`, `contract_address` | Exact source event |
+| `settlement_id` | Request ID, distinct from transaction hash |
+| `initiator_wallet`, `beneficiary_wallet` | Submitted participants, distinct from transaction target contract |
+| `asset.amount_atomic`, `symbol`, `decimals`, `contract_address` | Exact amount as a decimal integer string and submitted asset metadata |
+| `route.route_id`, `route.banks[]` | Ordered institution IDs and ISO alpha-2 countries |
+| `instructions_hash` | Commitment/reference to private instructions kept off-chain |
+| `institution_verification` | UNVERIFIED until trusted identity/route checks pass |
 
-The Python ABI in `blockchain/artifacts.py` includes both event versions and the
-new function. `domain/settlement.py` validates the decoded V2 structure. Invalid
-V2 events are rejected rather than assigned a default USD amount or partial route.
+`250000000` atomic units with six decimals means `250.000000` units. Preserve exact
+integers; never assume two decimals or use floating point for settlement amounts.
+Private names, account numbers, and Travel Rule payloads stay off-chain.
 
-## Indexing, retrieval and policy integration
+## Validation and authority
 
-```python
-indexer = BlockchainIndexer(db, tenant_id="chainlex-demo", chain_id=11155111)
-await indexer.ingest_block(block, transactions=transactions, logs=logs)
-```
+V2 rejects zero IDs, duplicate V2 IDs, missing/self beneficiary, missing instructions
+hash, zero amounts, decimals above 18, invalid asset symbols, empty/oversized route
+IDs, invalid institution IDs, repeated institutions, mismatched route arrays,
+routes outside 2–32 institutions, and countries outside CA/US/SG.
 
-Provide normalized integer block numbers, timestamps and log indexes and the
-corresponding transaction/receipt list. `chain_id` must come from the trusted node,
-not user input. The current database keys assume one chain per tenant; configure
-separate namespaces for other chains until chain-aware key migration is added.
+Wallet control, institution ownership, token metadata, country applicability, and
+bank allowlists require trusted off-chain checks. Initiation is not gated by those
+allowlists. Freeze and audit-pinning actions require the contract operator.
+A relayer is the recorded initiator unless original-signer authority is separately
+verified. Restrict event collection to approved contract addresses.
 
-The indexer stores the full payload under `contract_events.decoded_params` and
-collects all V2 request logs under the matching `chain_transactions.settlements`.
-Event-only ingestion stores event records; transaction summaries require the
-matching transaction to be included in the ingestion call. The event name is
-normalized to `SettlementInitiated` so the existing `Web3EventBus` callback handles
-both versions; `source_event_name` and `event_version` retain the distinction.
-Raw transaction `from`/`to` fields are retained independently of request participants.
+## Indexing and retrieval
 
-Transaction narratives include exact amounts and the route, so the shared Voyage
-document embedding now contains the banks and countries. A changed route changes
-the content hash and invalidates the transaction embedding cache. To retrieve
-regulations, use the decoded `route` in `CaseFacts`; every route country receives
-its own query embedding and result budget. Bank admission checks still compare
-the authenticated wallet's network/address against the exact allowlist.
+`BlockchainIndexer.ingest_block` accepts supplied blocks, transactions, and logs.
+Use normalized integer heights/timestamps/log indexes and chain identity from the
+trusted node. The current keys assume one chain per tenant; use separate namespaces
+until chain-aware key migration is implemented.
 
-Country metadata alone never proves jurisdictional applicability. The worker must
-verify wallet ownership, institution/country assignments, route authorization and
-asset metadata before policy decisions. An EVM receipt success means the event
-was emitted, not that the settlement was approved or completed. The API/worker
-orchestration is still scaffolded and is not automatically wired by this change.
+Full event payloads are stored under `contract_events.decoded_params`. Matching
+transactions collect V2 logs under `chain_transactions.settlements`; event-only
+input does not fabricate a transaction summary. Raw transaction sender/target remain
+independent. Normalized event names support the shared listener, while source event
+name/version retain provenance.
 
-## Migration and validation
+Transaction narratives include the exact amount and route. Changed content invalidates
+the embedding cache. `CaseFacts` retrieves rules for every route country; bank policies
+check the authenticated originator's exact network/address. These standalone services
+and the event bus are not automatically connected to the idle FSM worker.
 
-Legacy `initiateSettlement` and its original event/topic remain available. Legacy
-records have no inferred institutions, route or countries; they require enrichment
-before country-specific automated processing. The V2 uniqueness mapping does not
-retroactively deduplicate legacy IDs; applications must use distinct IDs/namespaces
-across legacy and V2 submission paths.
-
-An already deployed contract does not acquire the new function: deploy this
-version and update the configured contract address/ABI to emit routed events.
-No deployment is performed by these changes. Restrict the RPC event collector
-to approved contract addresses; the decoder alone does not authenticate contracts.
+Legacy events remain supported without inferred route/identity data. V2 uniqueness
+does not retroactively deduplicate legacy IDs. Existing deployments need the new
+contract and configured ABI/address before they can emit V2 events.
 
 ```sh
-uv run pytest
+uv run pytest tests/test_routed_settlement.py tests/test_compliance_cases.py
 forge test --contracts contracts --match-contract SettlementHubTest
 ```
-
-The Python tests check V2 decoding, malformed payload rejection, exact large
-amounts, country retrieval, multiple requests per transaction and event callbacks.
-Solidity tests cover request creation, duplicate IDs, route loops, route array
-length mismatch and continued legacy submission support.
