@@ -1,3 +1,4 @@
+import { verificationPayload, verificationView } from "./workspace-verification.js";
 import { AGENTS, SCENARIOS, WorkspaceApi, esc, fillIcons, icon, sepoliaReference } from "./workspace-core.js";
 import { previewState } from "./workspace-preview.js";
 import { activityView, eventRows, reportsView, transactionResult, transactionsView, workspaceView } from "./workspace-view.js";
@@ -193,15 +194,16 @@ async function loadTransactionConfig() {
 }
 async function submitTransaction(form) {
   const errorEl = $("#transaction-error"); errorEl.hidden = true;
-  const values = Object.fromEntries(new FormData(form));
+  const { verification_scenario, ...values } = Object.fromEntries(new FormData(form));
   if (state.preview) { state.transaction = { ...values, preview: true, state: "PREVIEW" }; $("#transaction-result").innerHTML = transactionResult(state); toast("Request previewed. No transaction was sent."); return; }
   const button = form.querySelector('[type="submit"]'); button.disabled = true; state.transactionBusy = true;
+  const originalLabel = button.innerHTML; button.innerHTML = '<span class="spinner"></span>Preparing request…';
   const key = form.dataset.requestKey || crypto.randomUUID(); form.dataset.requestKey = key;
   try {
     state.transaction = await state.api.request("/api/transactions", { method: "POST", officer: true, body: { ...values, idempotency_key: key } });
     $("#transaction-result").innerHTML = transactionResult(state); toast("Signed request saved. Tracking the Sepolia receipt."); pollTransaction();
   } catch (error) { errorEl.textContent = error.message; errorEl.hidden = false; }
-  finally { state.transactionBusy = false; button.disabled = false; }
+  finally { state.transactionBusy = false; button.disabled = false; button.innerHTML = originalLabel; }
 }
 async function pollTransaction() {
   clearTimeout(transactionTimer);
@@ -236,6 +238,7 @@ document.addEventListener("click", event => {
   else if (button.dataset.action === "export") exportAudit();
   else if (button.dataset.action === "disconnect") disconnect();
   else if (button.dataset.action === "transaction-audit") transactionAudit();
+  else if (button.dataset.action === "verify-request") verifyRequest(button);
   else if (button.dataset.action === "feed") { state.feedPaused = !state.feedPaused; if (state.feedPaused) resetRequest(); else poll(); render(true); }
   else if (button.dataset.action === "refresh") { clearError(); if (state.api && state.audit) poll(); else connectDialog(); }
   else if (button.id === "theme-toggle") { const dark = document.documentElement.dataset.theme !== "dark"; setTheme(dark ? "dark" : "light"); try { localStorage.setItem("chainlex-theme", dark ? "dark" : "light"); } catch { /* Storage may be disabled. */ } }
@@ -248,7 +251,11 @@ document.addEventListener("keydown", event => {
 });
 document.addEventListener("input", event => {
   if (event.target.id === "event-filter") { state.eventFilter = event.target.value; const value = state.eventFilter.toLowerCase(); const filtered = state.events.filter(e => `${e.event_type} ${e.actor_id} ${e.event_type.replaceAll("_", " ")}`.toLowerCase().includes(value)); $("#full-event-list").innerHTML = eventRows([...filtered].reverse()) || '<li><p class="text-note">No matching events.</p></li>'; }
-  if (event.target.closest("#transaction-form")) delete event.target.closest("form").dataset.requestKey;
+  if (event.target.closest("#transaction-form")) {
+    delete event.target.closest("form").dataset.requestKey;
+    state.verification = null;
+    if ($("#verification-result")) $("#verification-result").innerHTML = "";
+  }
 });
 document.addEventListener("submit", event => { if (event.target.id === "transaction-form") { event.preventDefault(); submitTransaction(event.target); } });
 $("#action-dialog").addEventListener("close", () => { $("#dialog-content").innerHTML = ""; returnFocus?.focus({ preventScroll: true }); });
@@ -260,3 +267,21 @@ fillIcons();
 try { setTheme(localStorage.getItem("chainlex-theme") === "dark" ? "dark" : "light"); } catch { setTheme("light"); }
 render(true);
 if (new URL(location.href).searchParams.has("audit")) { toast("Reconnect to restore the linked audit."); }
+
+async function verifyRequest(button) {
+  if (!state.api) { connectDialog(); return; }
+  const form = $("#transaction-form");
+  if (!form.reportValidity()) return;
+  button.disabled = true;
+  button.innerHTML = '<span class="spinner"></span>Checking…';
+  const payload = verificationPayload(form, state.transactionConfig?.signer);
+  try {
+    const result = await state.api.request("/api/compliance/verify", { method: "POST", body: payload });
+    const current = $("#transaction-form");
+    if (!current || JSON.stringify(verificationPayload(current, state.transactionConfig?.signer)) !== JSON.stringify(payload)) { toast("Inputs changed. Run preflight again for the current request."); return; }
+    state.verification = result;
+    if ($("#verification-result")) $("#verification-result").innerHTML = verificationView(state.verification);
+    toast("Simulated preflight complete. No Sepolia transaction was submitted.");
+  } catch (error) { showError(error); }
+  finally { button.disabled = false; button.innerHTML = "Run preflight"; }
+}

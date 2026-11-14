@@ -109,6 +109,25 @@ test("failed connection is actionable and never turns a preview into live data",
   await expect(page.locator(".activity-status")).toContainText("Sample events");
 });
 
+test("transaction preflight renders the latest backend court and six-leg result", async ({ page }) => {
+  await page.route("**/api/audits/scenarios", route => route.fulfill({ json: { scenarios: { corridor_audit: "Corridor audit" } } }));
+  await page.route("**/api/transactions/config", route => route.fulfill({ json: { configured: false } }));
+  await page.goto("/#transactions");
+  await page.getByRole("button", { name: "Run preflight" }).click();
+  await page.getByLabel("Workspace access token").fill("preflight-test");
+  await page.getByRole("dialog").getByRole("button", { name: "Connect workspace", exact: true }).click();
+  await page.getByLabel("Preflight scenario").selectOption("sanctions_blocked");
+  const request = page.waitForRequest(r => r.url().endsWith("/api/compliance/verify"));
+  await page.getByRole("button", { name: "Run preflight" }).click();
+  expect((await request).postDataJSON().mode).toBe("simulated");
+  await expect(page.getByRole("heading", { name: "Regulatory prosecutor", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Defense counsel", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Chief compliance officer", exact: true })).toBeVisible();
+  await expect(page.locator("#verification-result .panel-head")).toContainText("Deny");
+  await page.getByText("Completed preflight trace", { exact: true }).click();
+  await expect(page.locator("#verification-result")).toContainText("FINALIZING -> FINALIZED");
+});
+
 for (const theme of ["light", "dark"]) {
   test(`responsive and accessible in ${theme} mode`, async ({ page }) => {
     await page.goto("/");
