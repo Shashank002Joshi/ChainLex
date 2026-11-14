@@ -12,6 +12,9 @@ COLLECTIONS = (
     "tx_outbox",
     "audit_ledger",
     "simulator_operations",
+    "chain_blocks",
+    "chain_transactions",
+    "contract_events",
 )
 
 INDEXES = {
@@ -36,6 +39,39 @@ INDEXES = {
     "audit_ledger": [IndexModel([("tenant_id", 1), ("job_id", 1), ("sequence", 1)], unique=True)],
     "simulator_operations": [
         IndexModel([("tenant_id", 1), ("idempotency_key", 1)], unique=True, name="sim_action_key")
+    ],
+    "chain_blocks": [
+        IndexModel(
+            [("tenant_id", ASCENDING), ("block_number", ASCENDING)],
+            unique=True,
+            name="tenant_block_unique",
+        ),
+        IndexModel(
+            [("tenant_id", ASCENDING), ("block_hash", ASCENDING)],
+            name="tenant_block_hash",
+        ),
+    ],
+    "chain_transactions": [
+        IndexModel(
+            [("tenant_id", ASCENDING), ("tx_hash", ASCENDING)],
+            unique=True,
+            name="tenant_tx_unique",
+        ),
+        IndexModel(
+            [("tenant_id", ASCENDING), ("block_number", ASCENDING)],
+            name="tenant_tx_block",
+        ),
+    ],
+    "contract_events": [
+        IndexModel(
+            [("tenant_id", ASCENDING), ("tx_hash", ASCENDING), ("log_index", ASCENDING)],
+            unique=True,
+            name="tenant_event_unique",
+        ),
+        IndexModel(
+            [("tenant_id", ASCENDING), ("event_name", ASCENDING), ("is_orphaned", ASCENDING)],
+            name="tenant_event_lookup",
+        ),
     ],
 }
 
