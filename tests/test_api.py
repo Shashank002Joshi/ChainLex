@@ -124,3 +124,27 @@ def test_fsm_creation_rejects_state_or_event_injection(client, injected):
 
 def test_legacy_jobs_route_is_not_registered(client):
     assert "/api/jobs" not in client.get("/openapi.json").json()["paths"]
+
+
+def test_verify_compliance_api_cross_country(client):
+    response = client.post(
+        "/api/compliance/verify",
+        json={"scenario": "cross_country", "mode": "simulated"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["overall_status"] == "REVIEW"
+    assert "court_deliberation" in data["legs"]["leg_4_analysis"]
+
+
+def test_verify_compliance_api_sanctions_blocked(client):
+    response = client.post(
+        "/api/compliance/verify",
+        json={"scenario": "sanctions_blocked", "mode": "simulated"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["overall_status"] == "DENY"
+    court = data["legs"]["leg_4_analysis"]["court_deliberation"]
+    assert court["final_verdict"] == "DENY"
+    assert court["recommended_action"] == "QUARANTINE_REJECT"

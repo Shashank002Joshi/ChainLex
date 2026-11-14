@@ -2,10 +2,12 @@
 
 import argparse
 from pathlib import Path
+from typing import Literal
 
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 
 from chainlex.audit.api import install_exception_handlers
 from chainlex.audit.api import router as audit_router
@@ -16,6 +18,33 @@ from chainlex.domain.fsm import LEG_STATES, STATE_DEFINITIONS
 from chainlex.domain.models import CreateFSM, ProposalDecision
 from chainlex.domain.transitions import TRANSITIONS
 from chainlex.services.contracts import ComplianceFSM
+from chainlex.services.e2e_runner import run_e2e_verification
+
+
+class VerifyComplianceRequest(BaseModel):
+    scenario: Literal[
+        "cross_country", "binance_hack", "multihop_routing", "sanctions_blocked", "custom"
+    ] = "custom"
+    origin_bank: str = "scotiabank"
+    origin_country: str = "CA"
+    inter_banks: list[str] | None = None
+    inter_countries: list[str] | None = None
+    dest_bank: str = "dbs"
+    dest_country: str = "SG"
+    amount: float = 250000.0
+    symbol: str = "USDC"
+    decimals: int = 6
+    initiator_address: str = "0x1111111111111111111111111111111111111111"
+    beneficiary_address: str = "0x2222222222222222222222222222222222222222"
+    cdd_complete: bool = True
+    travel_rule_complete: bool = True
+    sanctions_clear: bool = True
+    beneficial_ownership_checked: bool = True
+    wash_trade: bool = False
+    zero_instructions_hash: bool = False
+    rogue_sender: bool = False
+    strict_intermediary: bool = False
+    mode: Literal["simulated", "sepolia"] = "simulated"
 
 
 def unfinished() -> None:
@@ -105,6 +134,43 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         principal: Principal = Depends(require_officer),
     ):
         unfinished()
+
+    @app.post("/api/compliance/verify", tags=["compliance verification"])
+    async def verify_compliance(body: VerifyComplianceRequest):
+        if body.scenario == "cross_country":
+            body.travel_rule_complete = False
+        elif body.scenario == "binance_hack":
+            body.amount = 5000000.0
+            body.beneficial_ownership_checked = False
+        elif body.scenario == "multihop_routing":
+            body.strict_intermediary = True
+        elif body.scenario == "sanctions_blocked":
+            body.sanctions_clear = False
+
+        return await run_e2e_verification(
+            scenario=body.scenario,
+            origin_bank=body.origin_bank,
+            origin_country=body.origin_country,
+            inter_banks=body.inter_banks,
+            inter_countries=body.inter_countries,
+            dest_bank=body.dest_bank,
+            dest_country=body.dest_country,
+            amount=body.amount,
+            symbol=body.symbol,
+            decimals=body.decimals,
+            initiator_address=body.initiator_address,
+            beneficiary_address=body.beneficiary_address,
+            cdd_complete=body.cdd_complete,
+            travel_rule_complete=body.travel_rule_complete,
+            sanctions_clear=body.sanctions_clear,
+            beneficial_ownership_checked=body.beneficial_ownership_checked,
+            wash_trade=body.wash_trade,
+            zero_instructions_hash=body.zero_instructions_hash,
+            rogue_sender=body.rogue_sender,
+            strict_intermediary=body.strict_intermediary,
+            mode=body.mode,
+            verbose=False,
+        )
 
     return app
 
