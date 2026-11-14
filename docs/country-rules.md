@@ -272,7 +272,7 @@ Scotiabank (CA), JPMorgan Chase (US) and DBS (SG).
    verify the settlement route and construct `CaseFacts`. Legacy events do not
    contain routing metadata. The additive V2 event now includes bank IDs, country
    codes, a route ID and intermediaries as unverified submitted claims; see
-   [settlement events](settlement-events.md) for the schema and migration steps.
+   [settlement events](./settlement-events.md) for the schema and migration steps.
 5. `load_bank_policies` and `evaluate_route_admission` check the initiating wallet
    against the route's bank policies. A non-allowlisted wallet produces DENY;
    missing or inactive/unreviewed policies produce REVIEW.

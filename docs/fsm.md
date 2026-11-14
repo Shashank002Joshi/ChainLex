@@ -1,12 +1,8 @@
-# ChainLex: Six-Leg Compliance FSM Design
+# Compliance FSM: design and recovery
 
-Date: November 14, 2026
+One durable compliance FSM covers intake, evidence, analysis, authorization, dispatch, and verification. The tables below specify the intended runtime contract. The current scaffold exposes definitions and typed interfaces; durable handlers and end-to-end execution remain implementation work.
 
-Design direction confirmed by the user: one durable compliance FSM with explicit states for intake, evidence retrieval, analysis, authorization, dispatch, and verification.
-
-Written specification approved for updates to both the plan and scaffold interfaces. Runtime handlers remain a separate phase.
-
-This document specifies the proposed replacement for the scaffold's generic `JobState` and `JobExecution` contracts. It does not claim that the state handlers, authorization gate, outbox, or recovery engine already exist. The broader product scope remains the [enriched hackathon plan](../../../chainlex_enriched_hackathon_plan.md).
+See the [architecture and demo plan](../chainlex_enriched_hackathon_plan.md) for presentation context and the [README](../README.md) for current capabilities.
 
 ## 1. State ownership and persistence
 
@@ -15,7 +11,7 @@ This document specifies the proposed replacement for the scaffold's generic `Job
 - Worker identity, lease expiry, fencing token, attempt count, and next-attempt time are runtime metadata. A worker restart is not a business-state transition.
 - Completed leg artifacts are immutable snapshots identified by version and digest. Advancing a leg requires its persisted output, not an in-memory return value.
 - Use `ComplianceFSM`, `ComplianceState`, `ComplianceEvent`, and `ComplianceFSMRepository` in the proposed scaffold contracts. Store new instances in `compliance_fsms`; preserve `compliance_cases` for historical precedent memory.
-- Proposed public routes are `/api/fsms`, `/api/fsms/{fsm_id}`, `/api/fsms/{fsm_id}/events`, and `/api/fsms/{fsm_id}/export`. Proposal, memory, and tenant-control routes retain their existing purposes.
+- Public route contracts are `/api/fsms`, `/api/fsms/{fsm_id}`, `/api/fsms/{fsm_id}/events`, and `/api/fsms/{fsm_id}/export`. Proposal, memory, and tenant-control routes retain their existing purposes.
 - The scaffold also exposes authenticated `GET /api/fsms/definition` for the static six-leg state/event catalog. Its output explicitly reports that runtime handlers are absent and guards have not been evaluated. Listed candidate events describe graph edges, not permission to execute them.
 - Rename proposal/audit workflow references from `job_id` to `fsm_id`. Updating local bootstrap definitions does not authorize deleting or migrating an existing Atlas collection. The scaffold has no implemented job creation flow to migrate automatically.
 
@@ -216,4 +212,4 @@ The crash demonstration kills the worker after the simulator saves the hold but 
 11. The API exposes the current leg, precise state, last event, artifact references, wait reason, and next permitted event; the UI never equates submitted with finalized.
 12. Terminal instances cannot be reopened by a retry or manual state edit. A deliberate new evaluation links to the previous instance.
 
-After written-spec review, first update the enriched plan and scaffold contracts, transition definitions, bootstrap names, documentation, and contract tests to these FSM terms. Those scaffold changes should continue to return explicit 501 responses where real handlers are absent. Implementing the durable handlers, external-provider integrations, and complete acceptance suite is a subsequent implementation plan; this document does not label their existing absence as a working feature.
+The catalog and scaffold interfaces implement these names and expose the static transition definitions. Instance operations remain explicit 501 responses until the durable handlers are implemented.

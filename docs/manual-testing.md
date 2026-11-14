@@ -9,7 +9,7 @@ Use the Atlas connection and tokens already saved in `.env`. These steps use a s
 In a terminal:
 
 ```sh
-cd /Users/devchetal/ChainLex
+cd ./
 export CHAINLEX_DATABASE=chainlex_manual_fsm
 uv sync --locked --group dev
 uv run chainlex-db preflight
@@ -49,7 +49,7 @@ If bootstrap reports a legacy unique `job_id` index, stop that setup attempt. It
 Terminal A — API:
 
 ```sh
-cd /Users/devchetal/ChainLex
+cd ./
 export CHAINLEX_DATABASE=chainlex_manual_fsm
 uv run chainlex-api --port 8000
 ```
@@ -57,7 +57,7 @@ uv run chainlex-api --port 8000
 Terminal B — simulator:
 
 ```sh
-cd /Users/devchetal/ChainLex
+cd ./
 export CHAINLEX_DATABASE=chainlex_manual_fsm
 uv run chainlex-simulator --port 8001
 ```
@@ -67,7 +67,7 @@ Keep both running. Restart them after code or environment changes; the commands 
 Terminal C — worker startup check:
 
 ```sh
-cd /Users/devchetal/ChainLex
+cd ./
 export CHAINLEX_DATABASE=chainlex_manual_fsm
 uv run chainlex-worker --once
 ```

@@ -2,7 +2,7 @@
 
 ## 1. Goal and scope
 
-Enrich the repository's [execution plan](firefly_fsm_chainlex_plan.md) around one demonstrable outcome:
+Enrich the repository's [execution plan](./firefly_fsm_chainlex_plan.md) around one demonstrable outcome:
 
 **ChainLex analyzes a proposed settlement, retrieves relevant regulatory evidence and governed precedents, authorizes a simulated hold, and finishes that action after a worker crash without creating a duplicate effect.**
 
@@ -30,7 +30,7 @@ Run three processes:
 2. **Workflow worker:** runs analysis, deterministic policy checks, dispatch, and reconciliation.
 3. **Persistent simulator:** represents the external settlement system and survives workflow-worker restarts.
 
-Use one durable six-leg compliance FSM per proposed settlement as the sole workflow authority. The detailed [state/event/guard specification](docs/superpowers/specs/2026-11-14-compliance-fsm-design.md) defines each transition and recovery path. LangGraph checkpointing, custody integrations, and additional infrastructure remain outside the core.
+Use one durable six-leg compliance FSM per proposed settlement as the sole workflow authority. The detailed [state/event/guard specification](./docs/fsm.md) defines each transition and recovery path. LangGraph checkpointing, custody integrations, and additional infrastructure remain outside the core.
 
 ### Responsibilities
 
