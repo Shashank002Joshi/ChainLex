@@ -30,7 +30,7 @@ Run three processes:
 2. **Workflow worker:** runs analysis, deterministic policy checks, dispatch, and reconciliation.
 3. **Persistent simulator:** represents the external settlement system and survives workflow-worker restarts.
 
-Use a custom FSM as the sole workflow authority. LangGraph checkpointing, custody integrations, and additional infrastructure remain outside the core.
+Use one durable six-leg compliance FSM per proposed settlement as the sole workflow authority. The detailed [state/event/guard specification](docs/superpowers/specs/2026-11-14-compliance-fsm-design.md) defines each transition and recovery path. LangGraph checkpointing, custody integrations, and additional infrastructure remain outside the core.
 
 ### Responsibilities
 
@@ -48,10 +48,11 @@ Use these collections:
 
 - **`entities`, `regulations`:** versioned source material and demo counterparty metadata.
 - **`compliance_cases`:** findings, reviewed precedents, and memory governance metadata.
-- **`job_executions`:** state, checkpoints, leases, and references to saved outputs.
+- **`compliance_fsms`:** state, checkpoints, leases, and references to saved outputs.
 - **`agent_action_proposals`, `policies`:** immutable proposed actions and versioned authorization rules.
 - **`tx_outbox`:** prepared actions, attempts, dispatch identifiers, and probe results.
-- **`audit_ledger`:** ordered, hash-linked events for each job.
+- **`audit_ledger`:** ordered, hash-linked events for each FSM.
+- **`tenant_controls`:** shared pause and governance revision, conditionally written when granting a dispatch permit.
 - **`simulator_operations`:** durable external-system effects, owned by the simulator.
 
 All tenant-owned records carry a server-assigned `tenant_id`. Store UTC timestamps, schema versions, and monetary amounts as integer minor units with an explicit currency.
@@ -60,13 +61,14 @@ Expose:
 
 | Interface | Behavior |
 |---|---|
-| `POST /api/jobs` | Accept an allowlisted scenario and idempotency key; return a job immediately |
-| `GET /api/jobs/{id}` | Return state, evidence, proposal, and verification details |
-| `GET /api/jobs/{id}/events?after_seq=N` | Return ordered events for dashboard polling and recovery |
+| `GET /api/fsms/definition` | Inspect the authenticated static state/event contract; no guards or handlers execute |
+| `POST /api/fsms` | Accept an allowlisted scenario and idempotency key; return an FSM immediately |
+| `GET /api/fsms/{fsm_id}` | Return leg, precise state, last event, wait reason, artifact references, and verification details |
+| `GET /api/fsms/{fsm_id}/events?after_seq=N` | Return ordered events for dashboard polling and recovery |
 | `POST /api/proposals/{id}/decision` | Record an officer's approval or rejection against the proposal version |
 | `POST /api/control` | Pause or resume new dispatches for the authenticated tenant |
 | `POST /api/memories/{id}/invalidate` | Tombstone a precedent with an officer's reason |
-| `GET /api/jobs/{id}/export` | Download the evidence and audit bundle as JSON |
+| `GET /api/fsms/{fsm_id}/export` | Download the evidence and audit bundle as JSON |
 
 Bind analyst and officer demo tokens to tenants through server configuration. Tenant identity and role must never come from request-body claims.
 
@@ -121,18 +123,30 @@ MongoDB schema validation checks document structure; application code verifies a
 
 ### Durable FSM and outbox
 
-Use the main job progression:
+Use one canonical `ComplianceState`, advanced by a server-originated `ComplianceEvent`. The current leg is derived from state; shared waits retain a validated origin/resume checkpoint. Worker ownership, heartbeat, attempts, and due times are runtime metadata.
 
-`CREATED → ANALYZING → AWAITING_POLICY → READY → DISPATCHING → CONFIRMING → COMPLETED`
+| Leg | Normal state progression | Required checkpoint |
+|---|---|---|
+| Intake | `RECEIVED → VALIDATING_CONTEXT → RESOLVING_PARTIES → RESOLVING_JURISDICTIONS → CONTEXT_READY` | Valid pending settlement, sourced party/jurisdiction facts, context digest |
+| Evidence | `EMBEDDING_QUERY → SEARCHING_REGULATIONS → SEARCHING_PRECEDENTS → RERANKING_EVIDENCE → VALIDATING_EVIDENCE → EVIDENCE_READY` | Saved embedding, candidates, ranked clauses, authoritative evidence versions/digest |
+| Analysis | `GENERATING_FINDING → VALIDATING_FINDING → FINDING_READY` | Validated cited finding, model and prompt version, input digest |
+| Authorization | `EVALUATING_POLICY → AUTHORIZED`; review loop: `EVALUATING_POLICY → AWAITING_APPROVAL → EVALUATING_POLICY` | Exact proposal digest, current policy and authority, unique outbox intent |
+| Dispatch | `PREPARING_ACTION → ACTION_PREPARED → SUBMITTING → SUBMITTED` or `SUBMISSION_UNKNOWN` | Prepared operation identity before send; serialized dispatch permit |
+| Verification | `RECONCILING → VERIFYING_EFFECT → EFFECT_CONFIRMED → FINALIZING → FINALIZED`; pending loop: `RECONCILING ↔ AWAITING_EFFECT` | Successful receipt, observed hold, atomic final audit and historical case |
 
-Branches support `AWAITING_REVIEW`, `DENIED`, `FAILED`, and `MANUAL_REVIEW`. Keep pause status separate so the job retains its execution position.
+Every edge has a named event, allowed actor source, guard requirements, durable output requirements, and state-specific recovery semantics. The scaffold publishes these descriptions; it does not yet execute the guards or persist transitions. Replace generic `transition(next_state)` interfaces with `apply_event(fsm, event, lease)`.
+
+Use `RETRY_WAIT` only for safe reads/computations or local finalization; default to three total attempts with two- and four-second waits. Use `AWAITING_INPUT` for correctable facts/evidence and `MANUAL_REVIEW` for unresolved external effects. Verification polls every second and moves to manual review after 120 seconds. `REJECTED`, `DENIED`, `ACTION_FAILED`, and `FINALIZED` are terminal. Pause remains separate from the business state.
+
+A timeout or crash in `SUBMITTING` enters reconciliation using the stored operation. A `NOT_FOUND` response alone never authorizes replacement. A crash in `FINALIZING` retries only the local final record. Detailed per-leg tables and exception rules are maintained in the linked specification.
 
 Implement these invariants:
 
 - Lease acquisition increments a monotonic fencing token. Every workflow write checks the expected state, document version, lease owner, token, and unexpired lease.
 - Use a ten-second lease, three-second heartbeat, and one-second recovery scan as initial demo defaults.
-- Commit approval, the corresponding job transition, outbox insertion, and audit event in one MongoDB transaction.
+- Commit approval, the corresponding FSM transition, outbox insertion, and audit event in one MongoDB transaction.
 - Keep external calls outside database transactions.
+- Grant `SUBMISSION_PERMITTED` by checking the tenant control revision and conditionally writing that same record. Pause, policy changes, and relevant memory invalidation increment it, serializing governance changes with dispatch permission.
 - Persist the prepared operation and stable idempotency key before dispatch.
 - Enforce unique tenant-scoped request and action keys.
 - On recovery, probe the saved operation before retrying. Never infer failure solely from a timeout.
@@ -152,7 +166,7 @@ Tombstone corrected precedents and link replacements. Preserve their historical 
 
 For the memory demonstration, compare a saved case evaluation with and without one reviewed precedent. Record changed evidence and review outcomes as an **ablation comparison**, without claiming mathematical causal certainty.
 
-Append a per-job audit event for each state transition, decision, invalidation, and connector outcome. Use canonical serialization, sequence numbers, previous hashes, and transactional appends. Provide verification and export commands. Describe the result as tamper-evident; external anchoring belongs on the roadmap.
+Append a per-FSM audit event for each state transition, decision, invalidation, and connector outcome. Use canonical serialization, sequence numbers, previous hashes, and transactional appends. Provide verification and export commands. Describe the result as tamper-evident; external anchoring belongs on the roadmap.
 
 ### Pause and recovery semantics
 
@@ -167,7 +181,7 @@ Do not automatically release a protective hold when reporting or another downstr
 | Window | Deliverable | Acceptance gate |
 |---|---|---|
 | **0:00–0:30** | Configuration, schemas, indexes, authentication, dependency preflight | Atlas transaction, vector query, Voyage embedding/reranking, and LLM smoke checks pass |
-| **0:30–1:30** | Persistent simulator, job leases, FSM, outbox, audit appends | A manually seeded proposal reaches a verified hold |
+| **0:30–1:30** | Persistent simulator, six-leg FSM, fenced leases, outbox, audit appends | A manually seeded proposal reaches a verified hold |
 | **1:30–2:30** | Curated corpus, retrieval, structured analyst finding | Evidence and precedent IDs are inspectable; unsupported citations are rejected |
 | **2:30–3:30** | Policy gate, officer decisions, tenant filtering, invalidation | Automatic, review, denial, and invalidation paths pass |
 | **3:30–4:30** | Recovery handling and failure injection | Worker death after external success produces one hold effect |
@@ -176,7 +190,7 @@ Do not automatically release a protective hold when reporting or another downstr
 
 Start database and search-index provisioning immediately. Required credentials or unavailable services are setup blockers; surface them in preflight rather than substituting unlabelled mocks.
 
-The dashboard contains scenario controls, a simple sender-to-recipient graph, job timeline, finding and citation panel, precedent inspection, and action-verification details. Use saved server events to drive the display.
+The dashboard contains scenario controls, a simple sender-to-recipient graph, FSM timeline, finding and citation panel, precedent inspection, and action-verification details. Use saved server events to drive the display.
 
 If behind schedule, remove graph animation and optional polish first. Preserve real retrieval, tenant isolation, authorization, durable execution, and crash recovery.
 
@@ -187,14 +201,14 @@ If behind schedule, remove graph animation and optional polish first. Preserve r
 1. **Automatic hold:** a USD 100,000 proposed settlement with qualifying evidence reaches one verified hold.
 2. **Officer review:** a USD 1.6 million proposal remains undispatched until valid approval.
 3. **Unauthorized request:** wrong tenant, role, target, or expired authority produces no external effect.
-4. **Repeated submission:** the same request key returns the original job; conflicting content is rejected.
-5. **Concurrent workers:** a stale lease holder cannot advance the job after another worker acquires it.
+4. **Repeated submission:** the same request key returns the original FSM; conflicting content is rejected.
+5. **Concurrent workers:** a stale lease holder cannot advance the FSM after another worker acquires it.
 6. **Crash before dispatch:** the committed outbox resumes without repeating completed analysis.
 7. **Lost response after success:** restart probes the saved operation and completes with one simulator effect.
 8. **Memory governance:** another tenant's, expired, or invalidated precedent never authorizes an action.
 9. **Dependency failure:** unavailable retrieval or malformed LLM output creates a reviewable failure without dispatch.
 10. **Pause:** queued work stops; in-flight work remains visible and reconciles.
-11. **Audit inspection:** modified, reordered, or missing internal records are detected; exported history matches the displayed job.
+11. **Audit inspection:** modified, reordered, or missing internal records are detected; exported history matches the displayed FSM.
 
 Use unit tests for policy and transitions, integration tests against a MongoDB replica set, and separate-process crash tests. Include one real Atlas/Voyage retrieval test and a dashboard smoke test.
 

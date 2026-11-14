@@ -6,12 +6,13 @@ COLLECTIONS = (
     "entities",
     "regulations",
     "compliance_cases",
-    "job_executions",
+    "compliance_fsms",
     "agent_action_proposals",
     "policies",
     "tx_outbox",
     "audit_ledger",
     "simulator_operations",
+    "tenant_controls",
 )
 
 INDEXES = {
@@ -22,26 +23,56 @@ INDEXES = {
             name="tenant_network_address",
         )
     ],
-    "job_executions": [
+    "compliance_fsms": [
         IndexModel([("tenant_id", 1), ("idempotency_key", 1)], unique=True, name="request_key"),
-        IndexModel([("state", 1), ("lease_expires_at", 1)], name="recoverable_jobs"),
+        IndexModel([("tenant_id", 1), ("fsm_id", 1)], unique=True, name="fsm_identity"),
+        IndexModel([("state", 1), ("runtime.lease.expires_at", 1)], name="recoverable_fsms"),
     ],
     "agent_action_proposals": [
-        IndexModel([("tenant_id", 1), ("job_id", 1), ("version", 1)], unique=True)
+        IndexModel(
+            [("tenant_id", 1), ("fsm_id", 1), ("version", 1)],
+            unique=True,
+            name="fsm_proposal_version",
+        )
     ],
     "tx_outbox": [
         IndexModel([("tenant_id", 1), ("idempotency_key", 1)], unique=True, name="action_key"),
         IndexModel([("state", 1), ("next_attempt_at", 1)], name="pending_actions"),
     ],
-    "audit_ledger": [IndexModel([("tenant_id", 1), ("job_id", 1), ("sequence", 1)], unique=True)],
+    "audit_ledger": [
+        IndexModel(
+            [("tenant_id", 1), ("fsm_id", 1), ("sequence", 1)],
+            unique=True,
+            name="fsm_audit_sequence",
+        ),
+        IndexModel(
+            [("tenant_id", 1), ("fsm_id", 1), ("event_id", 1)],
+            unique=True,
+            name="fsm_audit_event",
+            partialFilterExpression={"event_id": {"$type": "string"}},
+        ),
+    ],
+    "tenant_controls": [IndexModel([("tenant_id", 1)], unique=True, name="tenant_control")],
     "simulator_operations": [
         IndexModel([("tenant_id", 1), ("idempotency_key", 1)], unique=True, name="sim_action_key")
     ],
 }
 
 
+class LegacySchemaError(ValueError):
+    """Bootstrap requires an explicit migration of legacy unique job indexes."""
+
+
 async def bootstrap(database) -> None:
     existing = set(await database.list_collection_names())
+    for name in ("agent_action_proposals", "audit_ledger"):
+        if name in existing:
+            async for index in await database[name].list_indexes():
+                if index.get("unique") and "job_id" in index["key"]:
+                    raise LegacySchemaError(
+                        f"{name} has a legacy unique job_id index; plan an explicit migration "
+                        "before FSM bootstrap. No legacy indexes or records were deleted."
+                    )
     validator = {
         "$jsonSchema": {
             "bsonType": "object",

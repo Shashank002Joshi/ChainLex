@@ -1,4 +1,4 @@
-"""Idle scaffold worker; no compliance jobs are processed in this foundation."""
+"""Idle FSM scaffold worker; durable leg handlers are not implemented yet."""
 
 import argparse
 import asyncio
@@ -20,7 +20,7 @@ async def run(settings: Settings, *, once: bool = False) -> None:
         topology = await client.admin.command("hello")
         if not (topology.get("setName") or topology.get("msg") == "isdbgrid"):
             raise ValueError("Worker requires a replica set or sharded cluster")
-        logger.info("worker=scaffold_idle database=ready job_processing=not_implemented")
+        logger.info("worker=fsm_scaffold_idle database=ready fsm_processing=not_implemented")
         if once:
             return
         stopped = asyncio.Event()

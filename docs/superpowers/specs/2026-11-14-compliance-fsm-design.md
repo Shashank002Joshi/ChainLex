@@ -4,6 +4,8 @@ Date: November 14, 2026
 
 Design direction confirmed by the user: one durable compliance FSM with explicit states for intake, evidence retrieval, analysis, authorization, dispatch, and verification.
 
+Written specification approved for updates to both the plan and scaffold interfaces. Runtime handlers remain a separate phase.
+
 This document specifies the proposed replacement for the scaffold's generic `JobState` and `JobExecution` contracts. It does not claim that the state handlers, authorization gate, outbox, or recovery engine already exist. The broader product scope remains the [enriched hackathon plan](../../../chainlex_enriched_hackathon_plan.md).
 
 ## 1. State ownership and persistence
@@ -14,6 +16,7 @@ This document specifies the proposed replacement for the scaffold's generic `Job
 - Completed leg artifacts are immutable snapshots identified by version and digest. Advancing a leg requires its persisted output, not an in-memory return value.
 - Use `ComplianceFSM`, `ComplianceState`, `ComplianceEvent`, and `ComplianceFSMRepository` in the proposed scaffold contracts. Store new instances in `compliance_fsms`; preserve `compliance_cases` for historical precedent memory.
 - Proposed public routes are `/api/fsms`, `/api/fsms/{fsm_id}`, `/api/fsms/{fsm_id}/events`, and `/api/fsms/{fsm_id}/export`. Proposal, memory, and tenant-control routes retain their existing purposes.
+- The scaffold also exposes authenticated `GET /api/fsms/definition` for the static six-leg state/event catalog. Its output explicitly reports that runtime handlers are absent and guards have not been evaluated. Listed candidate events describe graph edges, not permission to execute them.
 - Rename proposal/audit workflow references from `job_id` to `fsm_id`. Updating local bootstrap definitions does not authorize deleting or migrating an existing Atlas collection. The scaffold has no implemented job creation flow to migrate automatically.
 
 ### Transition envelope
@@ -62,7 +65,9 @@ Purpose: create an inspectable evidence package before the analyst runs.
 
 Transient embedding/search/reranking failures use `RETRY_WAIT`. Missing applicable clauses or unverifiable sources use `AWAITING_INPUT`; they do not become a clean finding. Retrieval and reranking scores remain relevance scores.
 
-Recovery resumes the unfinished operation using saved context/query references. It does not regenerate a valid embedding because a later search failed. A changed context invalidates downstream evidence and analysis snapshots and starts a new revision at `EMBEDDING_QUERY`.
+Recovery resumes the unfinished operation using saved context/query references. It does not regenerate a valid embedding because a later search failed. Once intake revalidates a changed context, invalidate downstream evidence and analysis snapshots and start its new evidence revision at `EMBEDDING_QUERY`.
+
+Use `CONTEXT_STALE` to return to `VALIDATING_CONTEXT` when the context itself changed, and `EVIDENCE_STALE` to return to `EMBEDDING_QUERY` when the context remains valid but evidence changed. Both revoke stale approval/outbox permission and are available only before a possible external send.
 
 ## 4. Leg 3: Analysis
 
@@ -141,6 +146,8 @@ Once any send might have occurred, governance changes may block further sends bu
 
 Recovery from `EFFECT_CONFIRMED` or `FINALIZING` retries local finalization only. It never submits the hold again. The resulting historical case is a completed workflow record; it does not automatically become an analyst-confirmed precedent eligible to authorize future actions.
 
+An unavailable effect read during `VERIFYING_EFFECT` uses `PROBE_UNKNOWN` to schedule another read through `AWAITING_EFFECT`, or `RECONCILIATION_EXPIRED` to enter manual review. Exhausted local finalization uses `FINALIZATION_BLOCKED` with a finalization-only checkpoint. An officer's `FINALIZATION_RETRY_REQUESTED` then returns to `FINALIZING`; it cannot reenter dispatch or network reconciliation.
+
 ## 8. Shared wait states, retries, and terminal outcomes
 
 | State | Entry conditions | Allowed exit |
@@ -148,7 +155,9 @@ Recovery from `EFFECT_CONFIRMED` or `FINALIZING` retries local finalization only
 | `RETRY_WAIT` | A safe-to-repeat read/computation/preparation step failed transiently; persist failed state, input digest, attempt, and due time. | `RETRY_DUE` returns to that exact state after its guards pass. A submission timeout cannot use this path to resend. |
 | `AWAITING_INPUT` | Specific facts, citations, analysis, or a renewed valid approval are required; persist reason codes and the earliest affected return state. | An authorized correction event creates new input/artifact revisions and reenters that state. No unchanged-data resume or direct jump to dispatch. |
 | `AWAITING_APPROVAL` | An otherwise eligible immutable proposal needs officer authority. | Version-bound approval returns to policy evaluation; rejection enters `DENIED`. |
-| `MANUAL_REVIEW` | A possible external effect, contradictory receipt, or reconciliation deadline prevents an automated conclusion. | An authorized reconcile request returns to `RECONCILING`; documented authoritative effect/absence evidence may resolve the outcome through the same verification or guarded-resubmission paths. |
+| `MANUAL_REVIEW` | An external outcome remains unresolved or confirmed local finalization is blocked. | The saved checkpoint selects `RECONCILING` or local `FINALIZING`. Operator events cannot switch between these recovery boundaries. |
+
+Shared waits derive their leg from their saved origin state. Every wait checkpoint stores its input digest/revision; a retry additionally requires a persisted due time and consumed attempt. Resume targets are validated against the failed computation or earliest affected prior state. A manual finalization checkpoint permits only local finalization recovery.
 
 Default read/computation retry policy: three attempts total per state/input revision, with waits of two and four seconds. A valid provider `Retry-After` may extend a wait up to 60 seconds; longer or exhausted failures require input/operator attention. Persist attempts and timers so restart does not reset the budget. Deterministic invalid inputs are not retried.
 

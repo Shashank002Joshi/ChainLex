@@ -23,9 +23,11 @@
       <h1>ChainLex</h1>
       <p>A foundation for governed, auditable settlement compliance.</p>
       <hr>
-      <h2>Runtime is ready for development</h2>
+      <h2>Six-leg compliance FSM scaffold</h2>
       <p>The API, worker, and persistent simulator have independent entry points.
         Compliance analysis and settlement workflow execution are not implemented yet.</p>
+      <p>Intake → Evidence → Analysis → Authorization → Dispatch → Verification.</p>
+      <p>The authenticated <code>/api/fsms/definition</code> endpoint describes each leg’s states, events, guards, checkpoints, and recovery rules.</p>
       <ul>
         <li><a href="/docs">Inspect the API contracts</a></li>
         <li><a href="/health/live">Check API liveness</a></li>

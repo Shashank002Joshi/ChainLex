@@ -13,29 +13,16 @@ class Contract(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
-class JobState(StrEnum):
-    CREATED = "CREATED"
-    ANALYZING = "ANALYZING"
-    AWAITING_POLICY = "AWAITING_POLICY"
-    AWAITING_REVIEW = "AWAITING_REVIEW"
-    READY = "READY"
-    DISPATCHING = "DISPATCHING"
-    CONFIRMING = "CONFIRMING"
-    COMPLETED = "COMPLETED"
-    DENIED = "DENIED"
-    FAILED = "FAILED"
-    MANUAL_REVIEW = "MANUAL_REVIEW"
-
-
 class Scenario(StrEnum):
     AUTOMATIC_HOLD = "automatic_hold"
     OFFICER_REVIEW = "officer_review"
     INVALIDATED_PRECEDENT = "invalidated_precedent"
 
 
-class CreateJob(Contract):
+class CreateFSM(Contract):
     scenario: Scenario
     idempotency_key: Identifier
+    previous_fsm_id: Identifier | None = None
 
 
 class ProposalDecision(Contract):
