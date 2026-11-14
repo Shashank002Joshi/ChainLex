@@ -2,7 +2,7 @@
 
 from typing import Annotated, Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 
 from chainlex.domain.models import Contract
 from chainlex.domain.routing import SettlementRoute
@@ -53,9 +53,19 @@ class RoutedSettlement(Contract):
     def normalized_hex(cls, value):
         return value.lower()
 
-    @field_validator("settlement_id", "initiator_wallet", "beneficiary_wallet")
+    @field_validator("settlement_id", "initiator_wallet", "beneficiary_wallet", "instructions_hash")
     @classmethod
     def nonzero_identity(cls, value):
         if int(value, 16) == 0:
-            raise ValueError("Settlement ID and participant wallets must be nonzero")
+            raise ValueError(
+                "Settlement ID, participant wallets, and instructions hash must be nonzero"
+            )
         return value
+
+    @model_validator(mode="after")
+    def distinct_participants(self):
+        if self.initiator_wallet.lower() == self.beneficiary_wallet.lower():
+            raise ValueError(
+                "Self-settlement prohibited: initiator and beneficiary wallets cannot be identical"
+            )
+        return self
