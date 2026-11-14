@@ -5,6 +5,8 @@ from typing import Any
 
 import eth_abi
 import httpx
+from eth_account import Account
+from eth_utils import to_checksum_address
 
 from chainlex.blockchain.artifacts import TOPIC_SETTLEMENT_FROZEN
 from chainlex.connectors.simulator import prepare_action
@@ -35,12 +37,23 @@ class EVMConnector:
         client: httpx.AsyncClient | None = None,
         required_confirmations: int = 1,
         outbox_collection: Any | None = None,
+        private_key: str | None = None,
+        explorer_base_url: str = "https://sepolia.etherscan.io",
     ):
         self.rpc_url = rpc_url
         self.contract_address = contract_address.lower()
-        self.operator_address = operator_address.lower()
         self.required_confirmations = required_confirmations
         self.outbox_collection = outbox_collection
+        self.private_key = (
+            (private_key if private_key.startswith("0x") else f"0x{private_key}")
+            if private_key
+            else None
+        )
+        if self.private_key:
+            self.operator_address = Account.from_key(self.private_key).address
+        else:
+            self.operator_address = operator_address.lower()
+        self.explorer_base_url = explorer_base_url
         self._client = client
         self._owns_client = client is None
 
@@ -105,8 +118,61 @@ class EVMConnector:
             }
         ]
 
-        # Submit transaction; errors propagate directly to caller/outbox
-        tx_hash = await self._rpc_call("eth_sendTransaction", call_params)
+        # Submit transaction via offline raw signing or node-managed send
+        if self.private_key:
+            nonce_hex = await self._rpc_call(
+                "eth_getTransactionCount", [self.operator_address, "pending"]
+            )
+            nonce = int(nonce_hex, 16) if isinstance(nonce_hex, str) else int(nonce_hex or 0)
+            chain_id_hex = await self._rpc_call("eth_chainId", [])
+            chain_id = (
+                int(chain_id_hex, 16) if isinstance(chain_id_hex, str) else int(chain_id_hex or 1)
+            )
+            gas_price_hex = await self._rpc_call("eth_gasPrice", [])
+            gas_price = (
+                int(gas_price_hex, 16)
+                if isinstance(gas_price_hex, str)
+                else int(gas_price_hex or 20000000000)
+            )
+
+            # Estimate gas dynamically with buffer, or fall back to 600,000
+            try:
+                est_hex = await self._rpc_call(
+                    "eth_estimateGas",
+                    [
+                        {
+                            "from": to_checksum_address(self.operator_address),
+                            "to": to_checksum_address(self.contract_address),
+                            "data": calldata,
+                        }
+                    ],
+                )
+                est_gas = int(est_hex, 16) if isinstance(est_hex, str) else int(est_hex or 500000)
+                gas_limit = int(est_gas * 1.4)
+            except Exception:
+                gas_limit = 600000
+
+            tx_dict = {
+                "from": to_checksum_address(self.operator_address),
+                "to": to_checksum_address(self.contract_address),
+                "data": calldata,
+                "nonce": nonce,
+                "gas": gas_limit,
+                "gasPrice": int(gas_price * 1.3),
+                "chainId": chain_id,
+            }
+            signed = Account.sign_transaction(tx_dict, self.private_key)
+            raw_tx = (
+                signed.raw_transaction.hex()
+                if hasattr(signed, "raw_transaction")
+                else signed.rawTransaction.hex()
+            )
+            if not raw_tx.startswith("0x"):
+                raw_tx = f"0x{raw_tx}"
+            tx_hash = await self._rpc_call("eth_sendRawTransaction", [raw_tx])
+        else:
+            tx_hash = await self._rpc_call("eth_sendTransaction", call_params)
+
         if not tx_hash or not isinstance(tx_hash, str) or not tx_hash.startswith("0x"):
             raise RuntimeError(f"EVM RPC returned invalid transaction hash: {tx_hash}")
 
@@ -127,6 +193,10 @@ class EVMConnector:
             provider="evm",
             tx_hash=tx_hash,
         )
+
+    def get_explorer_url(self, tx_hash: str) -> str:
+        """Returns public testnet/mainnet explorer URL for a given transaction hash."""
+        return f"{self.explorer_base_url.rstrip('/')}/tx/{tx_hash}"
 
     async def _resolve_tx_hash(self, operation_id: str, tenant_id: str) -> str | None:
         """Resolves tx_hash from in-memory cache or durable outbox collection."""
