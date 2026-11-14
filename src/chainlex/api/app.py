@@ -7,8 +7,10 @@ from typing import Literal
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from chainlex.api.transactions import router as transaction_router
 from chainlex.audit.api import install_exception_handlers
 from chainlex.audit.api import router as audit_router
 from chainlex.auth import Principal, current_principal, require_officer
@@ -70,10 +72,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings if settings is not None else Settings()
     app.include_router(audit_router)
     install_exception_handlers(app)
+    app.include_router(transaction_router)
+    app.mount(
+        "/assets", StaticFiles(directory=Path(__file__).parent / "static"), name="workspace-assets"
+    )
 
     @app.get("/", include_in_schema=False)
     def index():
-        return FileResponse(Path(__file__).parent / "static" / "index.html")
+        return FileResponse(Path(__file__).parent / "static" / "workspace.html")
 
     @app.get("/health/live", tags=["health"])
     def live():

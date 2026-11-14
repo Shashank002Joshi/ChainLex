@@ -1,0 +1,13 @@
+{
+  "name": "chainlex-workspace-checks",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:ui": "playwright test",
+    "test:ui:unit": "node --test tests/ui/core.test.js"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.11.0",
+    "@playwright/test": "^1.58.0"
+  }
+}

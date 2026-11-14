@@ -61,6 +61,39 @@ officer bearer token. `uv run chainlex-worker --once` checks startup only;
 `--drain` processes currently ready steps and exits at human/timer waits.
 The separate settlement simulator starts with `uv run chainlex-simulator --port 8001`.
 
+## Operator workspace
+
+Open the API root to inspect the three agent outputs, suggested corridors, human
+gates, activity, and draft/final PDFs. The initial **Preview workspace** uses
+clearly labeled sample data. **Connect workspace** accepts the backend access
+and optional officer tokens; credentials stay in the current tab's memory.
+Start an audit or open an audit ID. Connected activity polls the audit ledger
+every two seconds; it is distinct from the fixed sample timeline.
+
+**Create transaction** represents an upstream settlement request. It needs no
+wallet integration. Configure these server-only values in `.env`:
+
+```sh
+CHAINLEX_SEPOLIA_PRIVATE_KEY=
+CHAINLEX_SEPOLIA_RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
+CHAINLEX_SEPOLIA_CONTRACT_ADDRESS=
+```
+
+Only an officer may submit a transaction. The server checks the Sepolia chain,
+saves the signed bytes and transaction hash before broadcast, and checks the
+receipt and settlement event before showing confirmation. The request records
+asset metadata; it does not transfer USDC. A confirmed request can create a
+linked demo audit containing the actual amount, route, and transaction reference.
+The audit's compliance reasoning and bank relationships remain scripted demo data.
+
+**Run preflight** uses the latest `/api/compliance/verify` endpoint in simulated
+mode and displays the three court submissions and completed six-leg trace.
+It does not submit a Sepolia transaction. Sepolia references attached manually
+to an audit are labeled as operator-provided and are not added to its PDF.
+
+The workspace uses browser-native modules and needs no frontend build. Optional
+browser checks use `npm ci`, `npx playwright install chromium`, and `npm run test:ui`.
+
 ## Run an audit through Swagger
 
 1. As analyst, call `POST /api/audits` with
